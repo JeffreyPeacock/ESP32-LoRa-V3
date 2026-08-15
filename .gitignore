@@ -1,0 +1,17 @@
+# PlatformIO build output. Toolchains and frameworks live in ~/.platformio,
+# outside the project, and are never committed.
+.pio/
+
+# JetBrains project state. workspace.xml and the .iml carry absolute local
+# paths and per-user settings, so the whole directory stays out.
+.idea/
+
+# Scratch space, not part of the project.
+.claude_artifacts/
+
+# Third-party installer, downloaded on demand by scripts/install-toolchain.sh.
+get-platformio.py
+
+# Exported device configuration can contain channel pre-shared keys.
+*.config.yaml
+device-config.yaml
