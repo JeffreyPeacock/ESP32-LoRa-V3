@@ -15,3 +15,8 @@ get-platformio.py
 # Exported device configuration can contain channel pre-shared keys.
 *.config.yaml
 device-config.yaml
+
+# Claude Code: commands and shared settings are committed; per-user permission
+# grants are not.
+.claude/settings.local.json
+.claude/scheduled_tasks.lock

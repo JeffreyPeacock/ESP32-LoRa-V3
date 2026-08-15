@@ -1,0 +1,35 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(shellcheck *)",
+      "Bash(pio run)",
+      "Bash(pio device list)",
+      "Bash(pio pkg list*)",
+      "Bash(./scripts/heltec-dev.sh check)",
+      "Bash(./scripts/heltec-dev.sh ports)",
+      "Bash(./scripts/heltec-dev.sh chip-id*)",
+      "Bash(./scripts/install-toolchain.sh --help)",
+      "Bash(./scripts/heltec-setup.sh check)",
+      "Bash(meshtastic --info*)",
+      "Bash(meshtastic --nodes*)",
+      "Bash(esptool version)",
+      "Bash(gh issue list*)",
+      "Bash(gh issue view*)",
+      "Bash(gh pr list*)",
+      "Bash(gh pr view*)",
+      "Bash(gh project item-list*)",
+      "Bash(gh project field-list*)",
+      "Bash(gh project view*)",
+      "Bash(gh api graphql -f query=*)",
+      "Bash(udevadm info*)",
+      "Bash(lsusb*)",
+      "Bash(pyenv versions*)",
+      "Bash(pyenv prefix*)",
+      "WebFetch(domain:meshtastic.org)",
+      "WebFetch(domain:reticulum.network)",
+      "WebFetch(domain:docs.platformio.org)",
+      "WebFetch(domain:heltec.org)",
+      "WebFetch(domain:raw.githubusercontent.com)"
+    ]
+  }
+}

@@ -5,27 +5,27 @@ establish and are easy to get wrong from memory or from generic documentation.
 
 ## What this project is
 
-A Heltec WiFi LoRa 32 V3 (ESP32-S3 + SX1262) in Northern AZ, intended to
-exchange text messages with radios in the CA Bay Area and Orange County, CA.
+A Heltec WiFi LoRa 32 V3 (ESP32-S3 + SX1262) at **FLG**, intended to exchange text
+messages with radios at **SJC** and **SNA**. The three sites are referred to by
+the nearest airport ident throughout; they are hundreds of km apart, in Arizona
+and California.
 
 Two constraints shape everything:
 
-- **Only the Northern AZ board is under our control.** The other two belong to
-  other people who may not be reachable. Prefer work that can be completed and
-  verified solo.
+- **Only FLG is under our control.** The other two belong to other people who
+  may not be reachable. Prefer work that can be completed and verified solo.
 - **A backbone is required between sites.** Meshtastic caps hop limit at 7
-  (default 3) and each hop is one RF link of a few km; Northern AZ to the Bay
-  Area is ~900 km. The gap cannot be closed with more LoRa hops. Meshtastic
-  bridges meshes with MQTT, which needs IP reachability between gateways — the
-  transport under that IP is a free choice (public internet, VPN, cellular,
-  ham/AREDN).
+  (default 3) and each hop is one RF link of a few km; FLG to SJC is ~900 km.
+  The gap cannot be closed with more LoRa hops. Meshtastic bridges meshes with
+  MQTT, which needs IP reachability between gateways — the transport under that
+  IP is a free choice (public internet, VPN, cellular, ham/AREDN).
 
 **Current direction:** Meshtastic first, to learn the hardware and find out
-whether anyone else is on the air in Northern AZ. Reticulum/RNode is the likely
-end state, because it is an actually routed hybrid — transport nodes with path
-tables, transport-agnostic interfaces, and LXMF propagation nodes that hold
-messages for offline recipients. Meshtastic has none of those: its MQTT bridge
-glues two flood domains together and queues nothing.
+whether anyone else is on the air within range of FLG. Reticulum/RNode is the
+likely end state, because it is an actually routed hybrid — transport nodes
+with path tables, transport-agnostic interfaces, and LXMF propagation nodes
+that hold messages for offline recipients. Meshtastic has none of those: its
+MQTT bridge glues two flood domains together and queues nothing.
 
 ## Hardware facts
 
@@ -101,6 +101,66 @@ All scripts must pass `shellcheck -x` with no output. Run it before finishing.
 - Shell startup files cannot be relied on for pyenv: `runuser -l` and `su -` give
   a *non-interactive* login shell, and Ubuntu's `~/.bashrc` returns on its first
   line for those, so `pyenv init` never runs. Resolve interpreters directly.
+
+## Issue tracker and board
+
+Issues live in `JeffreyPeacock/ESP32-LoRa-V3`; the board is **LoRa Wide-Area
+Mesh**, project **#10**, owned by the **user** `JeffreyPeacock` — GraphQL uses
+`user(login:)`, not `organization(login:)`, and `gh project` needs
+`--owner JeffreyPeacock`.
+
+**Priority is a board field here, not a label.** Do not create `priority:pN`
+labels.
+
+| Thing | ID |
+|---|---|
+| Project | `PVT_kwHOAdChXs4BgeW5` |
+| Status field | `PVTSSF_lAHOAdChXs4BgeW5zhfGh7Y` |
+| Status options | Backlog `fc0746ee` · Prioritized `7db529ed` · Ready `0559bd80` · In Progress `082c573d` · Completed `5241f608` |
+| Priority field | `PVTSSF_lAHOAdChXs4BgeW5zhfGh_A` |
+| Priority options | p1 `768405dd` · p2 `bded9378` · p3 `baa61257` · p4 `90f2d0b0` · p5 `77dadab6` |
+| Repo node | `R_kgDOT5oIVQ` |
+
+Labels: `hardware` `meshtastic` `mqtt` `reticulum` `rf` `coordination`
+`decision`. Milestones: **Solo bring-up** (verifiable with only FLG) and
+**Multi-site link** (needs an operator at SJC or SNA). The milestone test is
+verifiability, not subject matter.
+
+The board holds ~12 items, so a single `gh project item-list` is complete and
+cheap — the paging workarounds needed on larger boards do not apply here. Still
+filter server-side where the option exists.
+
+## Branches and verification
+
+Branch prefixes: `fix/`, `feat/`, `docs/`, `chore/`. Documentation-only changes
+may go straight to `main`.
+
+**There is no CI.** An empty `statusCheckRollup` proves nothing — never report
+that checks passed when none ran. These local gates are the only gates:
+
+```bash
+shellcheck -x scripts/*.sh scripts/lib/*.sh    # must produce NO output
+pio run                                        # must end in [SUCCESS]
+./scripts/heltec-dev.sh check                  # when hardware is involved
+```
+
+Never report a hardware result that was not observed. If the board was not
+attached, say the check did not run.
+
+## Slash commands
+
+`.claude/commands/` — adapted from the CaptureServer project, with the board
+IDs, gates and hardware realities of this repo.
+
+| Command | Does |
+|---|---|
+| `/new-issue` | File an issue, label it, set milestone, add to the board, set Status and Priority |
+| `/fix-ticket N` | Work one ticket end to end: board → branch → gates → PR |
+| `/fix-ready` | Drain the Ready column, ordered around which firmware the board can hold |
+| `/backlog-audit` | Groom the board: priorities, milestones, stale assumptions |
+| `/merge-pr N` | Verify locally, squash-merge, move tickets to Completed |
+| `/board-check` | Verify host, serial path and radio; report which firmware is loaded |
+| `/create-plan` | Enter plan mode for a task |
 
 ## Commits
 

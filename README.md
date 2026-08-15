@@ -4,8 +4,9 @@ Host tooling and bring-up firmware for the
 [Heltec WiFi LoRa 32 V3](https://heltec.org/project/wifi-lora-32-v3/) —
 an ESP32-S3 with a Semtech SX1262 LoRa radio and a 128×64 SSD1306 OLED.
 
-The goal is text messaging between radios in Northern AZ, the CA Bay Area and
-Orange County CA. This repository holds the parts that make a board usable from
+The goal is text messaging between three radios, hundreds of km apart in Arizona
+and California, referred to here by the nearest airport ident: **FLG**, **SJC**
+and **SNA**. This repository holds the parts that make a board usable from
 a Linux command line: a one-shot toolchain installer, a root-level host setup
 script, an unprivileged build-and-flash script, and a diagnostic firmware that
 proves the hardware before any protocol work starts.
@@ -115,12 +116,14 @@ not transmit without: a **1.8 V TCXO** reference and **DIO2 as the RF switch**.
 
 ## On range
 
-Northern AZ to the Bay Area is roughly 900 km. There is no direct LoRa path at
-that distance — the limit is the radio horizon and a hop limit capped at 7, not
-transmit power. Linking two distant meshes requires a backbone carrying traffic
-between gateways. Meshtastic implements that as MQTT, which needs IP reachability
+FLG to SJC is roughly 900 km. There is no direct LoRa path at that distance —
+the limit is the radio horizon and a hop limit capped at 7, not transmit power.
+Linking two distant meshes requires a backbone carrying traffic between
+gateways. Meshtastic implements that as MQTT, which needs IP reachability
 between the two ends; what carries that IP is a free choice — public internet,
 VPN, cellular, satellite, or a ham/AREDN link.
+
+
 
 ## Layout
 
@@ -130,7 +133,15 @@ include/board_pins.h    pin map and the settings the variant header gets wrong
 src/main.cpp            bring-up diagnostic firmware
 scripts/                install, host setup, build and flash
 scripts/lib/            shared shell helpers
+.claude/commands/       slash commands for issue and board workflow
 ```
+
+## Sites
+
+The three radios are referred to by the nearest airport ident: **FLG**, **SJC**
+and **SNA**. Only FLG is under this repository owner's control; the other two
+belong to other operators. Work is sequenced so that anything verifiable with
+only FLG happens first.
 
 ## License
 
