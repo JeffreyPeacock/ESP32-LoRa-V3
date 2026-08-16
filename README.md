@@ -157,18 +157,23 @@ the device as authoritative if the two ever disagree.
 | Channel PSK | default (well known, not private) | |
 | Channel 0 uplink | **enabled** | #5 |
 | Channel 0 downlink | disabled | deliberate — see below |
+| Channel 1 | `mqtt`, random PSK | downlink target — #7 |
+| Channel 1 downlink | **enabled** | name must literally be `mqtt` |
 
 **Connectivity**
 
 | | | Set by |
 |---|---|---|
-| Bluetooth | enabled, `RANDOM_PIN` | default |
-| WiFi | not configured | mutually exclusive with BLE on ESP32 |
+| Bluetooth | **off while WiFi is on** | ESP32 constraint, not a setting |
+| WiFi | **enabled**, node has its own LAN address | #7 |
 | GPS | none fitted | position is fixed, not sensed |
-| MQTT | **enabled**, via phone proxy over BLE | #5 |
-| MQTT broker | `mqtt.meshtastic.org` as `meshdev` | firmware default |
+| MQTT | **enabled**, node connects directly | #5, #7 |
+| MQTT broker | local mosquitto, anonymous | #7 (was the public broker in #5) |
 | MQTT encryption | `true` | firmware default |
 | MQTT topic root | `msh/US` | firmware default |
+| MQTT JSON | **enabled** | required for injection — #7 |
+| Meshtastic API | port 4403 on the LAN | how the phone app connects without BLE |
+| Web UI | ports 80/443 | built in |
 
 Three entries above are choices rather than defaults left alone:
 
@@ -184,6 +189,43 @@ Three entries above are choices rather than defaults left alone:
   address, and the coordinates are not committed. Channel 0 also carries
   `position_precision: 13`, so what leaves the radio is coarsened to roughly km
   scale regardless.
+
+## Bridging a mesh to the internet
+
+Meshtastic joins two meshes that cannot hear each other over RF by relaying
+through an MQTT broker. Uplink publishes what a node hears; downlink takes
+messages from the broker and transmits them over LoRa. Both directions are
+needed for a two-site link.
+
+**Downlink only works when the node has its own network connection.** Through
+the phone proxy it fails — the message reaches the phone and kills the app's
+MQTT client, reproducibly, and nothing is transmitted. On the node's own WiFi
+the same payload works.
+
+| Transport | Uplink | Downlink |
+|---|---|---|
+| Phone proxy over BLE | works | **fails** |
+| Node's own WiFi | works | works |
+
+So whichever node terminates a remote link needs WiFi or Ethernet of its own. A
+phone-proxied node can send outward but cannot be reached from another site.
+
+Injecting a message requires a channel named literally `mqtt` with downlink
+enabled, `mqtt.json_enabled`, and a publish to `msh/US/2/json/mqtt/`:
+
+```json
+{"from": 4143681024, "type": "sendtext", "payload": "hello"}
+```
+
+The public broker will not do this — it restricts JSON downlink — so this needs
+a broker you control.
+
+### Reaching a headless node
+
+WiFi and BLE are mutually exclusive on ESP32, so a WiFi node is not reachable
+over Bluetooth. It is still reachable three other ways: the phone app can add it
+as a **network device on port 4403**, a browser can use the **web UI on port
+80**, and the CLI takes `--host <ip>` in place of `--port`.
 
 ## On range
 

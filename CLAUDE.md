@@ -153,6 +153,91 @@ kept in `doc/peers.local.md`, which `.gitignore` excludes via `doc/*.local.md` �
 useful for making contact locally, not ours to publish. Node IDs are fine to
 record; coordinates are not.
 
+## MQTT downlink needs the node's own network (#7)
+
+Proven on the bench, and it constrains the architecture rather than being a
+configuration detail:
+
+| Transport | Uplink (mesh → broker) | Downlink (broker → mesh) |
+|---|---|---|
+| Phone proxy over BLE | works (#5) | **fails** |
+| Node's own WiFi | works | **works** (#7) |
+
+With `mqtt.proxy_to_client_enabled`, a downlink message reaches the phone and
+**kills the app's MQTT client** — reproducibly, ~6 s after each publish, with a
+~18 s reconnect. Nothing is transmitted. On the node's own WiFi the identical
+payload works first time.
+
+**Consequence for the multi-site link:** whichever node terminates a remote link
+must have its own WiFi or Ethernet. A phone-proxied node can send outward but
+cannot be reached from another site, which is the half that matters for
+receiving. This governs #9 and #10.
+
+The working injection, verified in the serial log:
+
+```
+[mqtt] JSON payload FTG1 injection proof, length 20
+[mqtt] handleReceived(LOCAL) (... fr=0xf6fb8e00 ... Portnum=1)
+[mqtt] Expand short PSK #1 ... Use AES128 key!
+[RadioIf] Started Tx (... encrypted len=42)
+[RadioIf] Completed sending
+```
+
+Requirements, all of them mandatory:
+
+- a channel named **literally `mqtt`** with `downlink_enabled` (the name is the
+  subscription trigger), reboot after adding it
+- `mqtt.json_enabled = true`
+- publish to `msh/US/2/json/mqtt/` as
+  `{"from": <decimal node num>, "type": "sendtext", "payload": "..."}`
+- FLG's node num is **4143681024** (`!f6fb8e00` in hex)
+
+Keep `downlink_enabled` **off** on the primary channel. Downlink there would
+rebroadcast public-internet traffic onto the shared local mesh. It belongs only
+on the dedicated `mqtt` channel.
+
+### Broker gotchas that cost real time
+
+- **The public broker will not do this.** It restricts JSON downlink, hence a
+  private broker.
+- **amqtt is MQTT 3.1.1 only; the Meshtastic phone app speaks MQTT 5.0.** The
+  broker answers `Unsupported protocol version` and the app reports
+  `UNSUPPORTED_PROTOCOL_VERSION`. Use **mosquitto** (2.0.18 handles both).
+- **amqtt's `allow-anonymous: true` still rejects a client that supplies a
+  username.** It permits clients sending *no* credentials. The node was sending
+  `meshdev`/`large4cats` inherited from the public broker and got
+  `Not authorized`, with no session and therefore nothing in the broker log.
+- **mosquitto 2.x defaults to localhost-only and denies anonymous.** It needs
+  `listener 1883 0.0.0.0` and `allow_anonymous true` in `/etc/mosquitto/conf.d/`.
+
+## Reaching a headless node on WiFi
+
+WiFi and BLE are mutually exclusive on ESP32, so a node using its own WiFi is
+unreachable over Bluetooth. It is not unreachable in general — it serves three
+interfaces on the LAN:
+
+| Port | What | Use |
+|---|---|---|
+| 4403 | Meshtastic API | **Add as a "network device" in the phone app** — full messaging |
+| 80/443 | built-in web UI | browser |
+| — | — | `meshtastic --host <ip>` instead of `--port /dev/ttyUSB0` |
+
+The app's "add a network device" feature expects a **radio** on 4403. Pointing
+it at an MQTT broker on 1883 makes it send Meshtastic stream framing to the
+broker, which logs `Invalid remaining length bytes:0x94949494` — `0x94` is the
+Meshtastic start byte. That is a wrong-address symptom, not a broker fault.
+
+The node's address comes from DHCP, so set a reservation on the router before
+depending on it.
+
+### WiFi failure codes worth recognising
+
+`Reason: 15 - 4WAY_HANDSHAKE_TIMEOUT`, looping every ~8 s, means the **PSK is
+wrong** — the node found the AP and failed authentication. It is not a band or
+SSID problem. Read it with a raw serial capture; the protobuf API hides these
+logs. Note the ESP32-S3 is **2.4 GHz only**, so also confirm the SSID exists on
+2.4 GHz.
+
 ## Which firmware is on the board
 
 The board holds one firmware at a time and there is no way to tell from the
