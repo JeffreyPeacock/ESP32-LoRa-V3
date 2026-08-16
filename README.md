@@ -134,6 +134,7 @@ src/main.cpp            bring-up diagnostic firmware
 scripts/                install, host setup, build and flash
 scripts/lib/            shared shell helpers
 .claude/commands/       slash commands for issue and board workflow
+doc/                    ticket Quick View, regenerated from the board
 ```
 
 ## Sites

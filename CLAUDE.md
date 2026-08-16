@@ -183,6 +183,7 @@ IDs, gates and hardware realities of this repo.
 | `/backlog-audit` | Groom the board: priorities, milestones, stale assumptions |
 | `/merge-pr N` | Verify locally, squash-merge, move tickets to Completed |
 | `/board-check` | Verify host, serial path and radio; report which firmware is loaded |
+| `/priority-review` | Rebuild `doc/ticket-priority-review.md`, the at-a-glance Quick View |
 | `/create-plan` | Enter plan mode for a task |
 
 ## Commits
