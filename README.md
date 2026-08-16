@@ -114,6 +114,70 @@ which is an SX127x name — on this board it is **DIO1**. The header also record
 the two settings that differ from RadioLib's defaults and that this board will
 not transmit without: a **1.8 V TCXO** reference and **DIO2 as the RF switch**.
 
+## FLG configuration
+
+Current state of the one board under our control. Values read from
+`meshtastic --info`; the table is maintained by hand as tickets land, so treat
+the device as authoritative if the two ever disagree.
+
+**Hardware**
+
+| | | |
+|---|---|---|
+| Board | Heltec WiFi LoRa 32 V3 | |
+| MCU | ESP32-S3, rev v0.2, 2 cores @ 240 MHz | |
+| Radio | Semtech SX1262 | 1.8 V TCXO, DIO2 drives the RF switch |
+| Flash | 8 MB embedded (GD) | no PSRAM |
+| MAC | `44:1B:F6:FB:8E:00` | |
+| USB bridge | CP2102N, `10c4:ea60` | **not** the ESP32-S3 native USB |
+| Serial port | `/dev/ttyUSB0` @ 115200 | pinned in `platformio.ini` |
+
+**Firmware**
+
+| | | Set by |
+|---|---|---|
+| Stack | Meshtastic | #1 |
+| Version | `2.7.26.54e0d8d` | #1 |
+| Target | `heltec-v3` | #1 |
+| Node ID | `!f6fb8e00` | derived from the MAC, not configurable |
+| Owner name | `Meshtastic 8e00` / `8e00` | factory default, **deliberately** — #2 |
+| Role | `CLIENT` | default |
+
+**LoRa**
+
+| | | Set by |
+|---|---|---|
+| Region | `US` (902–928 MHz) | #2 |
+| Modem preset | `LONG_FAST` | default |
+| Hop limit | `3` | default, max 7 |
+| TX enabled | `true` | |
+| RX boosted gain | `true` | |
+| Primary channel | index 0, unnamed | default LongFast |
+| Channel PSK | default (well known, not private) | |
+
+**Connectivity**
+
+| | | Set by |
+|---|---|---|
+| Bluetooth | enabled, `RANDOM_PIN` | default |
+| WiFi | not configured | mutually exclusive with BLE on ESP32 |
+| GPS | none fitted | position not broadcast |
+| MQTT | **disabled** | pending #5 |
+| MQTT broker | `mqtt.meshtastic.org` as `meshdev` | firmware default, unused while disabled |
+| MQTT encryption | `true` | firmware default |
+| MQTT topic root | `msh/US` | firmware default |
+
+Two entries above are choices rather than defaults left alone:
+
+- **The owner name stays factory.** `longName` and `shortName` ride in every
+  NodeInfo packet, and once they reach the public broker they cannot be
+  withdrawn — services that ingest it keep what they heard. Renaming is free
+  while MQTT is off and permanent once it is on, so the decision belongs to #5.
+- **The channel is still stock LongFast with the default key**, which is what
+  any other Meshtastic user in the area will be on. That maximises the chance of
+  hearing somebody during the survey (#3). It is not private, and a dedicated
+  channel with a generated key comes later.
+
 ## On range
 
 FLG to SJC is roughly 900 km. There is no direct LoRa path at that distance —

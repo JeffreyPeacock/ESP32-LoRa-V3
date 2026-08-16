@@ -53,6 +53,20 @@ FLG's Meshtastic node ID is **`!f6fb8e00`** — the low four bytes of the MAC. I
 is derived, not configured, so it survives reflashing and factory reset. This is
 the address the other sites need.
 
+## Node name is deliberately the factory default
+
+FLG runs the stock owner name `Meshtastic 8e00` / `8e00`. **This is a decision,
+not an oversight — do not "fix" it.**
+
+`longName` and `shortName` go out in every NodeInfo packet. Once they reach the
+public broker they cannot be withdrawn: services that ingest that broker keep
+what they heard, and a later rename does not rewrite their history. The site
+codes FLG/SJC/SNA exist partly for obfuscation, so broadcasting one as a node
+name would work against that.
+
+Renaming is free while MQTT is off and permanent once it is on, so the decision
+point is #5, not #2. Ask before setting a name.
+
 ## Which firmware is on the board
 
 The board holds one firmware at a time and there is no way to tell from the

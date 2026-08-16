@@ -4,11 +4,10 @@ The [LoRa Wide-Area Mesh board](https://github.com/users/JeffreyPeacock/projects
 authoritative detail. This is the at-a-glance ordering the board does not give cleanly, plus a Note
 column that is analysis rather than board data.
 
-**Snapshot:** 2026-08-15 17:07 MST · 11 open · 5 Backlog · 3 Ready · 3 Prioritized
+**Snapshot:** 2026-08-15 17:19 MST · 10 open · 5 Backlog · 3 Prioritized · 2 Ready
 
 |  Pri   | #  |    Status   | Milestone | Title | Note |
 |:------:|:--:|:-----------:|:---------:|-------|------|
-| **p1** | 2  |    Ready    |    Solo   | Set region US and node owner name | Region is UNSET, so the radio will not transmit at all. Blocks #3 and everything after it. |
 | **p1** | 3  |    Ready    |    Solo   | Survey: is anyone else on the air within radio range? | The one unknown needing nobody else: is there a mesh within reach of FLG? A definite no is as useful as a yes. |
 | **p1** | 7  | Prioritized |    Solo   | Prove the internet-to-mesh injection path against a local broker | Proves the mechanism every remote link depends on, using only FLG. Needs a local mosquitto — the public broker restricts JSON downlink. |
 | **p2** | 4  |    Ready    |    Solo   | Pair the phone over BLE | Confirms the phone leg on its own. WiFi and BLE are mutually exclusive on ESP32, so use MQTT proxy mode to keep both. |
@@ -24,7 +23,7 @@ column that is analysis rather than board data.
 
 | Priority | p1 | p2 | p3 | p4 | p5 | — | Total |
 |:--------:|:--:|:--:|:--:|:--:|:--:|:-:|:-----:|
-|   Open   | 3  | 4  | 2  | 1  | 1  | 0 |   11  |
+|   Open   | 2  | 4  | 2  | 1  | 1  | 0 |   10  |
 
 &nbsp;
 
