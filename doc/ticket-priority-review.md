@@ -4,14 +4,12 @@ The [LoRa Wide-Area Mesh board](https://github.com/users/JeffreyPeacock/projects
 authoritative detail. This is the at-a-glance ordering the board does not give cleanly, plus a Note
 column that is analysis rather than board data.
 
-**Snapshot:** 2026-08-15 17:36 MST · 9 open · 5 Backlog · 3 Prioritized · 1 Ready
+**Snapshot:** 2026-08-15 21:18 MST · 7 open · 5 Backlog · 2 Prioritized
 
 |  Pri   | #  |    Status   | Milestone | Title | Note |
 |:------:|:--:|:-----------:|:---------:|-------|------|
 | **p1** | 7  | Prioritized |    Solo   | Prove the internet-to-mesh injection path against a local broker | Proves the mechanism every remote link depends on, using only FLG. Needs a local mosquitto — the public broker restricts JSON downlink. |
-| **p2** | 4  |    Ready    |    Solo   | Pair the phone over BLE | Confirms the phone leg on its own. WiFi and BLE are mutually exclusive on ESP32, so use MQTT proxy mode to keep both. Real mesh traffic now exists to confirm against (#3). |
-| **p2** | 5  | Prioritized |    Solo   | Enable the MQTT bridge via phone proxy | Depends on #4. Uplinking the default channel publishes position and telemetry publicly. |
-| **p2** | 6  | Prioritized |    Solo   | Observe our own traffic arriving at the broker | Depends on #5. Proves radio → BLE → phone → internet → broker, every link but the far end. #3 found live peers, so there is third-party traffic to see, not just ours. |
+| **p2** | 6  | Prioritized |    Solo   | Observe our own traffic arriving at the broker | Largely done already: #5's verification saw our own packets on the public broker. Remaining value is watching third-party traffic. |
 | **p2** | 8  |   Backlog   |    Solo   | Evaluate Reticulum / RNode on the same board | The likely end state: routes between networks and holds messages for offline nodes. Export the Meshtastic config first — reflashing this board with RNode is known to be awkward. |
 | **p3** | 9  |   Backlog   |   Multi   | Prepare the handoff packet for the SJC operator | Preparing it is solo; delivering it is not. Send --ch-add-url, never --seturl, which replaces all their channels. |
 | **p3** | 10 |   Backlog   |   Multi   | Decide the production backbone and broker | Public broker is the fast start. Move to our own if traffic must reach past the far gateway into the local mesh, or for JSON injection. |
@@ -22,7 +20,7 @@ column that is analysis rather than board data.
 
 | Priority | p1 | p2 | p3 | p4 | p5 | — | Total |
 |:--------:|:--:|:--:|:--:|:--:|:--:|:-:|:-----:|
-|   Open   | 1  | 4  | 2  | 1  | 1  | 0 |   9   |
+|   Open   | 1  | 2  | 2  | 1  | 1  | 0 |   7   |
 
 &nbsp;
 

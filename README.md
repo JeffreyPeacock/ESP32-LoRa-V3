@@ -140,7 +140,7 @@ the device as authoritative if the two ever disagree.
 | Version | `2.7.26.54e0d8d` | #1 |
 | Target | `heltec-v3` | #1 |
 | Node ID | `!f6fb8e00` | derived from the MAC, not configurable |
-| Owner name | `Meshtastic 8e00` / `8e00` | factory default, **deliberately** — #2 |
+| Owner name | `FLG Tech Group 01` / `FTG1` | #5 |
 | Role | `CLIENT` | default |
 
 **LoRa**
@@ -148,12 +148,15 @@ the device as authoritative if the two ever disagree.
 | | | Set by |
 |---|---|---|
 | Region | `US` (902–928 MHz) | #2 |
+| Fixed position | set; coordinates **not** recorded here | #5 |
 | Modem preset | `LONG_FAST` | default |
 | Hop limit | `3` | default, max 7 |
 | TX enabled | `true` | |
 | RX boosted gain | `true` | |
 | Primary channel | index 0, unnamed | default LongFast |
 | Channel PSK | default (well known, not private) | |
+| Channel 0 uplink | **enabled** | #5 |
+| Channel 0 downlink | disabled | deliberate — see below |
 
 **Connectivity**
 
@@ -161,22 +164,26 @@ the device as authoritative if the two ever disagree.
 |---|---|---|
 | Bluetooth | enabled, `RANDOM_PIN` | default |
 | WiFi | not configured | mutually exclusive with BLE on ESP32 |
-| GPS | none fitted | position not broadcast |
-| MQTT | **disabled** | pending #5 |
-| MQTT broker | `mqtt.meshtastic.org` as `meshdev` | firmware default, unused while disabled |
+| GPS | none fitted | position is fixed, not sensed |
+| MQTT | **enabled**, via phone proxy over BLE | #5 |
+| MQTT broker | `mqtt.meshtastic.org` as `meshdev` | firmware default |
 | MQTT encryption | `true` | firmware default |
 | MQTT topic root | `msh/US` | firmware default |
 
-Two entries above are choices rather than defaults left alone:
+Three entries above are choices rather than defaults left alone:
 
-- **The owner name stays factory.** `longName` and `shortName` ride in every
-  NodeInfo packet, and once they reach the public broker they cannot be
-  withdrawn — services that ingest it keep what they heard. Renaming is free
-  while MQTT is off and permanent once it is on, so the decision belongs to #5.
+- **Channel 0 downlink stays off.** Uplink publishes what this node hears;
+  downlink would rebroadcast public-internet traffic onto the local RF mesh,
+  which is antisocial on a shared default channel. Downlink gets enabled later
+  on a dedicated channel, where it only carries our own traffic.
 - **The channel is still stock LongFast with the default key**, which is what
-  any other Meshtastic user in the area will be on. That maximises the chance of
-  hearing somebody during the survey (#3). It is not private, and a dedicated
-  channel with a generated key comes later.
+  any other Meshtastic user in the area is on. That is what made the survey (#3)
+  productive. It is not private; a dedicated channel with a generated key comes
+  later.
+- **The fixed position is a nearby public landmark**, not the operator's
+  address, and the coordinates are not committed. Channel 0 also carries
+  `position_precision: 13`, so what leaves the radio is coarsened to roughly km
+  scale regardless.
 
 ## On range
 

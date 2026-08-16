@@ -53,19 +53,44 @@ FLG's Meshtastic node ID is **`!f6fb8e00`** — the low four bytes of the MAC. I
 is derived, not configured, so it survives reflashing and factory reset. This is
 the address the other sites need.
 
-## Node name is deliberately the factory default
+## FLG's on-air identity
 
-FLG runs the stock owner name `Meshtastic 8e00` / `8e00`. **This is a decision,
-not an oversight — do not "fix" it.**
+| | |
+|---|---|
+| `longName` | `FLG Tech Group 01` |
+| `shortName` | `FTG1` |
+| Node ID | `!f6fb8e00` |
 
-`longName` and `shortName` go out in every NodeInfo packet. Once they reach the
-public broker they cannot be withdrawn: services that ingest that broker keep
-what they heard, and a later rename does not rewrite their history. The site
-codes FLG/SJC/SNA exist partly for obfuscation, so broadcasting one as a node
-name would work against that.
+Chosen in #5 and checked for collisions against the 71 nodes then known. `FTG1`
+is deliberately distinct from the neighbouring `FLG1` (Brilliant Mobile, 10 km)
+and `FLAG` (Brilliant Mesh) — those are the operators most likely to be confused
+with us.
 
-Renaming is free while MQTT is off and permanent once it is on, so the decision
-point is #5, not #2. Ask before setting a name.
+**This is now public and permanent.** It has been uplinked to the public broker,
+and services that ingest that broker keep what they heard; a later rename will
+not rewrite their history. Renaming the device is still trivial, but the old
+name cannot be recalled.
+
+## FLG broadcasts a fixed position
+
+FLG has no GPS. It carries a **fixed position** set with
+`--setlat/--setlon/--setalt`, chosen as a nearby public landmark rather than the
+operator's address.
+
+**The coordinates are not recorded in this repository.** They approximate where
+the operator lives, and the same rule applied to other operators' positions
+applies to ours. Read them from the device with `meshtastic --info` when needed.
+
+Two things blunt the disclosure, and it is worth knowing both:
+
+- Channel 0 carries `position_precision: 13`, so what leaves the radio is
+  quantised to roughly km scale, not the stored value.
+- The stored fix is a public landmark to begin with.
+
+Note the ordering consequence: once a position is broadcast, a location-hinting
+**node name adds little further disclosure** — the position packet is already
+more precise than the name. The name decision was made under the older
+assumption that no position was being sent.
 
 ## There is an active mesh in range of FLG (#3)
 
