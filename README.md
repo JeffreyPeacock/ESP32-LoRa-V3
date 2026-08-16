@@ -120,6 +120,10 @@ Current state of the one board under our control. Values read from
 `meshtastic --info`; the table is maintained by hand as tickets land, so treat
 the device as authoritative if the two ever disagree.
 
+This is the **normal operating configuration**: Bluetooth to a phone, LoRa to
+the local mesh, and no dependency on any network. MQTT and WiFi are switched on
+only for bridging experiments and switched back off afterwards.
+
 **Hardware**
 
 | | | |
@@ -158,21 +162,21 @@ the device as authoritative if the two ever disagree.
 | Channel 0 uplink | **enabled** | #5 |
 | Channel 0 downlink | disabled | deliberate — see below |
 | Channel 1 | `mqtt`, random PSK | downlink target — #7 |
-| Channel 1 downlink | **enabled** | name must literally be `mqtt` |
+| Channel 1 downlink | **off** | re-enable only for injection work — see below |
 
 **Connectivity**
 
 | | | Set by |
 |---|---|---|
-| Bluetooth | **off while WiFi is on** | ESP32 constraint, not a setting |
-| WiFi | **enabled**, node has its own LAN address | #7 |
+| Bluetooth | **enabled** — phone connects over BLE | normal operating mode |
+| WiFi | **off** | enabling it disables BLE — ESP32 constraint |
 | GPS | none fitted | position is fixed, not sensed |
-| MQTT | **enabled**, node connects directly | #5, #7 |
-| MQTT broker | local mosquitto, anonymous | #7 (was the public broker in #5) |
+| MQTT | **off** | optional; the mesh needs no internet |
+| MQTT broker | `mqtt.meshtastic.org` as `meshdev` | preset, unused while MQTT is off |
 | MQTT encryption | `true` | firmware default |
 | MQTT topic root | `msh/US` | firmware default |
-| MQTT JSON | **enabled** | required for injection — #7 |
-| Meshtastic API | port 4403 on the LAN | how the phone app connects without BLE |
+| MQTT JSON | enabled | only matters for injection — #7 |
+| Meshtastic API | port 4403, **only when WiFi is on** | how the app connects without BLE |
 | Web UI | ports 80/443 | built in |
 
 Three entries above are choices rather than defaults left alone:

@@ -153,6 +153,25 @@ kept in `doc/peers.local.md`, which `.gitignore` excludes via `doc/*.local.md` â
 useful for making contact locally, not ours to publish. Node IDs are fine to
 record; coordinates are not.
 
+## Normal operating mode is BLE, no network
+
+The default and expected state of FTG1 is **Bluetooth to a phone, LoRa to the
+local mesh, WiFi off, MQTT off**. Nothing about ordinary Meshtastic use needs an
+internet connection â€” the mesh found in #3 runs entirely over RF.
+
+WiFi and MQTT get switched on for bridging work and switched back off. If a
+session leaves the board on WiFi, the phone cannot pair, because BLE is disabled
+whenever WiFi is up. **Restore the normal mode when finishing bridging work:**
+
+```bash
+meshtastic --set network.wifi_enabled false --set mqtt.enabled false
+meshtastic --ch-set downlink_enabled false --ch-index 1
+```
+
+Keep `downlink_enabled` off on every channel during normal use. Downlink over
+the BLE proxy is what triggers the queue-saturation bug below, and it is
+worthless without a broker anyway.
+
 ## MQTT downlink needs the node's own network (#7)
 
 Proven on the bench, and it constrains the architecture rather than being a
