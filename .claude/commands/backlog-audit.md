@@ -39,7 +39,7 @@ gh issue list --repo JeffreyPeacock/ESP32-LoRa-V3 --state open --limit 100 \
 Flag mismatches against the rubric: p1 means "the next step cannot happen without it" — on this
 project that is a very short list. Flag p1 inflation specifically.
 
-**2. Milestone correct.** `Solo bring-up` = verifiable with only the FLG board. `Multi-site link` =
+**2. Milestone correct.** `Solo bring-up` = verifiable with only the FTG1 board. `Multi-site link` =
 needs an operator at SJC or SNA, or spans sites. The test is **verifiability, not topic** — this is
 the classification most likely to be wrong, because it is tempting to file by subject matter.
 

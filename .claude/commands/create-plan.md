@@ -23,4 +23,4 @@ describe actually behaves that way on this board.
 
 A plan that assumes those away is worthless. Where a step depends on an unknown of that kind, say so
 in the plan and give the cheapest way to find out — usually a bench observation, not more reading.
-Prefer sequencing work so that everything verifiable with only the FLG board happens first.
+Prefer sequencing work so that everything verifiable with only the FTG1 board happens first.

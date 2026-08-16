@@ -36,7 +36,7 @@ More than one is fine. If nothing fits, propose a new label rather than forcing 
 
 | Milestone | Criterion |
 |---|---|
-| `Solo bring-up` | Completable **and verifiable** with only the FLG board |
+| `Solo bring-up` | Completable **and verifiable** with only the FTG1 board |
 | `Multi-site link` | Needs an operator at another site, or spans sites |
 
 The test is verifiability, not topic. Evaluating Reticulum is solo; preparing a handoff packet

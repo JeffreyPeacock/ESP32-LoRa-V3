@@ -12,7 +12,7 @@ column that is analysis rather than board data.
 | **p3** | 9  | Backlog |   Multi   | Prepare the handoff packet for the SJC operator | #7 established that a remote link needs the far node on its own WiFi/Ethernet, not a phone proxy. Say so in the handoff. |
 | **p3** | 10 | Backlog |   Multi   | Decide the production backbone and broker | #7 narrowed this: a broker on a private LAN address cannot serve another site. Needs a public host or a VPN. |
 | **p4** | 11 | Backlog |    Solo   | Calibrate VBAT_DIVIDER against a meter | 4.9 is Heltec's figure, never verified here. Needs a pack and a meter; check polarity against the silkscreen first. |
-| **p5** | 12 | Backlog |   Multi   | Bring SNA online | Deferred until FLG-to-SJC works. The same handoff packet applies. |
+| **p5** | 12 | Backlog |   Multi   | Bring SNA online | Deferred until FTG1-to-SJC works. The same handoff packet applies. |
 
 ## Tally
 
@@ -32,7 +32,7 @@ column that is analysis rather than board data.
 
 &nbsp;
 
-**Milestone** — `Solo` is completable *and verifiable* with only the FLG board. `Multi` needs an
+**Milestone** — `Solo` is completable *and verifiable* with only the FTG1 board. `Multi` needs an
 operator at SJC or SNA. The test is verifiability, not subject matter.
 
 ## Refresh

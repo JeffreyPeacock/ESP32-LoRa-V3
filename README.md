@@ -5,7 +5,7 @@ Host tooling and bring-up firmware for the
 an ESP32-S3 with a Semtech SX1262 LoRa radio and a 128×64 SSD1306 OLED.
 
 The goal is text messaging between three radios, hundreds of km apart in Arizona
-and California, referred to here by the nearest airport ident: **FLG**, **SJC**
+and California, referred to here by the nearest airport ident: **FTG1**, **SJC**
 and **SNA**. This repository holds the parts that make a board usable from
 a Linux command line: a one-shot toolchain installer, a root-level host setup
 script, an unprivileged build-and-flash script, and a diagnostic firmware that
@@ -114,7 +114,7 @@ which is an SX127x name — on this board it is **DIO1**. The header also record
 the two settings that differ from RadioLib's defaults and that this board will
 not transmit without: a **1.8 V TCXO** reference and **DIO2 as the RF switch**.
 
-## FLG configuration
+## FTG1 configuration
 
 Current state of the one board under our control. Values read from
 `meshtastic --info`; the table is maintained by hand as tickets land, so treat
@@ -229,7 +229,7 @@ as a **network device on port 4403**, a browser can use the **web UI on port
 
 ## On range
 
-FLG to SJC is roughly 900 km. There is no direct LoRa path at that distance —
+FTG1 to SJC is roughly 900 km. There is no direct LoRa path at that distance —
 the limit is the radio horizon and a hop limit capped at 7, not transmit power.
 Linking two distant meshes requires a backbone carrying traffic between
 gateways. Meshtastic implements that as MQTT, which needs IP reachability
@@ -248,14 +248,15 @@ scripts/                install, host setup, build and flash
 scripts/lib/            shared shell helpers
 .claude/commands/       slash commands for issue and board workflow
 doc/                    ticket Quick View, regenerated from the board
+doc/mqtt-broker-vps.md  running and hardening a broker for the multi-site link
 ```
 
 ## Sites
 
-The three radios are referred to by the nearest airport ident: **FLG**, **SJC**
-and **SNA**. Only FLG is under this repository owner's control; the other two
+The three radios are referred to by the nearest airport ident: **FTG1**, **SJC**
+and **SNA**. Only FTG1 is under this repository owner's control; the other two
 belong to other operators. Work is sequenced so that anything verifiable with
-only FLG happens first.
+only FTG1 happens first.
 
 ## License
 

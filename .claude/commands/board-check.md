@@ -35,7 +35,7 @@ Do not continue past a failure here — everything downstream will produce confu
 ./scripts/heltec-dev.sh chip-id
 ```
 
-Expected: ESP32-S3, 8 MB embedded flash, and a MAC. FLG's MAC is `44:1B:F6:FB:8E:00` — if the MAC
+Expected: ESP32-S3, 8 MB embedded flash, and a MAC. FTG1's MAC is `44:1B:F6:FB:8E:00` — if the MAC
 differs, you are talking to a different board; say so rather than assuming.
 
 If it fails to sync: hold **PRG**, tap **RST**, release **PRG**, retry. Needing that dance every time

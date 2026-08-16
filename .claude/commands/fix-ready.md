@@ -28,7 +28,7 @@ If empty, report "Ready queue is empty" and stop.
 
 Unlike a software backlog, the ordering constraint here is usually **physical, not code-level**:
 
-- **One board, one firmware.** FLG can run Meshtastic or RNode or the PlatformIO diagnostic, never
+- **One board, one firmware.** FTG1 can run Meshtastic or RNode or the PlatformIO diagnostic, never
   two at once. Tickets that require different firmware cannot be interleaved — group them by firmware
   and do all of one before reflashing.
 - **Some tickets need the radio listening for a long time.** A survey ticket is not a five-minute
@@ -69,5 +69,5 @@ Do not fake progress and do not guess at hardware results. Instead:
 Tickets completed (number → PR), tickets blocked (number → what they wait on), the firmware the board
 is left running, and the final state of the Ready column.
 
-**State the firmware explicitly.** Leaving FLG on a different firmware than it started on, without
+**State the firmware explicitly.** Leaving FTG1 on a different firmware than it started on, without
 saying so, is the single most confusing outcome of a long run.

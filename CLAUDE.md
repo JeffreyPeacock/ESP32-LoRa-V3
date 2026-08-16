@@ -5,23 +5,23 @@ establish and are easy to get wrong from memory or from generic documentation.
 
 ## What this project is
 
-A Heltec WiFi LoRa 32 V3 (ESP32-S3 + SX1262) at **FLG**, intended to exchange text
+A Heltec WiFi LoRa 32 V3 (ESP32-S3 + SX1262) at **FTG1**, intended to exchange text
 messages with radios at **SJC** and **SNA**. The three sites are referred to by
 the nearest airport ident throughout; they are hundreds of km apart, in Arizona
 and California.
 
 Two constraints shape everything:
 
-- **Only FLG is under our control.** The other two belong to other people who
+- **Only FTG1 is under our control.** The other two belong to other people who
   may not be reachable. Prefer work that can be completed and verified solo.
 - **A backbone is required between sites.** Meshtastic caps hop limit at 7
-  (default 3) and each hop is one RF link of a few km; FLG to SJC is ~900 km.
+  (default 3) and each hop is one RF link of a few km; FTG1 to SJC is ~900 km.
   The gap cannot be closed with more LoRa hops. Meshtastic bridges meshes with
   MQTT, which needs IP reachability between gateways — the transport under that
   IP is a free choice (public internet, VPN, cellular, ham/AREDN).
 
 **Current direction:** Meshtastic first, to learn the hardware and find out
-whether anyone else is on the air within range of FLG. Reticulum/RNode is the
+whether anyone else is on the air within range of FTG1. Reticulum/RNode is the
 likely end state, because it is an actually routed hybrid — transport nodes
 with path tables, transport-agnostic interfaces, and LXMF propagation nodes
 that hold messages for offline recipients. Meshtastic has none of those: its
@@ -49,11 +49,11 @@ MAC `44:1B:F6:FB:8E:00`, ESP32-S3 rev v0.2, 8 MB flash, no PSRAM.
 `ESP.getEfuseMac()` returns the MAC **little-endian** — octet 1 of the printed
 address is the low byte. Printing high-byte-first silently reverses it.
 
-FLG's Meshtastic node ID is **`!f6fb8e00`** — the low four bytes of the MAC. It
+FTG1's Meshtastic node ID is **`!f6fb8e00`** — the low four bytes of the MAC. It
 is derived, not configured, so it survives reflashing and factory reset. This is
 the address the other sites need.
 
-## FLG's on-air identity
+## FTG1's on-air identity
 
 | | |
 |---|---|
@@ -71,9 +71,9 @@ and services that ingest that broker keep what they heard; a later rename will
 not rewrite their history. Renaming the device is still trivial, but the old
 name cannot be recalled.
 
-## FLG broadcasts a fixed position
+## FTG1 broadcasts a fixed position
 
-FLG has no GPS. It carries a **fixed position** set with
+FTG1 has no GPS. It carries a **fixed position** set with
 `--setlat/--setlon/--setalt`, chosen as a nearby public landmark rather than the
 operator's address.
 
@@ -92,9 +92,9 @@ Note the ordering consequence: once a position is broadcast, a location-hinting
 more precise than the name. The name decision was made under the older
 assumption that no position was being sent.
 
-## There is an active mesh in range of FLG (#3)
+## There is an active mesh in range of FTG1 (#3)
 
-Surveyed 2026-08-15 with the stock LongFast channel and default key. **FLG is
+Surveyed 2026-08-15 with the stock LongFast channel and default key. **FTG1 is
 not isolated.** This changes planning: real RF peers exist to test against, so
 link behaviour no longer has to wait on SJC.
 
@@ -127,7 +127,7 @@ someone else's location and stay out of this repository.
 
 ### The node clock, and why timestamps lie until you set it
 
-FLG has no GPS and no battery-backed RTC. With no time source it seeds its clock
+FTG1 has no GPS and no battery-backed RTC. With no time source it seeds its clock
 from the **firmware build epoch**, so `--nodes` renders live traffic as "1 month
 ago". Our own node reads the same way, which is the giveaway.
 
@@ -190,7 +190,7 @@ Requirements, all of them mandatory:
 - `mqtt.json_enabled = true`
 - publish to `msh/US/2/json/mqtt/` as
   `{"from": <decimal node num>, "type": "sendtext", "payload": "..."}`
-- FLG's node num is **4143681024** (`!f6fb8e00` in hex)
+- FTG1's node num is **4143681024** (`!f6fb8e00` in hex)
 
 Keep `downlink_enabled` **off** on the primary channel. Downlink there would
 rebroadcast public-internet traffic onto the shared local mesh. It belongs only
@@ -330,7 +330,7 @@ labels.
 | Repo node | `R_kgDOT5oIVQ` |
 
 Labels: `hardware` `meshtastic` `mqtt` `reticulum` `rf` `coordination`
-`decision`. Milestones: **Solo bring-up** (verifiable with only FLG) and
+`decision`. Milestones: **Solo bring-up** (verifiable with only FTG1) and
 **Multi-site link** (needs an operator at SJC or SNA). The milestone test is
 verifiability, not subject matter.
 
