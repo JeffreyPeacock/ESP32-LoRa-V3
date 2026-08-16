@@ -100,12 +100,33 @@ back:     efa18420 --> 085e15cb (-3.5dB) --> !f6fb8e00 (-1.0dB)
 Node IDs are already public on the mesh and on MQTT maps; coordinates are
 someone else's location and stay out of this repository.
 
-### Timestamps from the node are not wall-clock
+### The node clock, and why timestamps lie until you set it
 
-With no GPS and no network time, `lastHeard` is seeded from the **firmware build
-epoch**, so `--nodes` renders live traffic as "1 month ago". Our own node reads
-the same way, which is the giveaway. Trust relative ordering, not dates — and
-use a live capture when recency matters.
+FLG has no GPS and no battery-backed RTC. With no time source it seeds its clock
+from the **firmware build epoch**, so `--nodes` renders live traffic as "1 month
+ago". Our own node reads the same way, which is the giveaway.
+
+Fix it directly:
+
+```bash
+meshtastic --set-time            # uses the host clock; verified skew 0.00 h
+```
+
+**It does not survive a power cycle** — there is no RTC to hold it, so the node
+re-seeds from the build epoch on every boot. Two things set it automatically, so
+this is mostly a bench-only chore: the phone app sets the time when it connects
+over BLE, and mesh peers share time with each other. Set it by hand when working
+over serial with no phone attached, and re-set it after any reboot.
+
+Until it is set, trust relative ordering rather than dates, and use a live
+capture when recency matters.
+
+### Peer positions are not committed
+
+Many peers broadcast lat/lon. Those are other operators' locations. They are
+kept in `doc/peers.local.md`, which `.gitignore` excludes via `doc/*.local.md` —
+useful for making contact locally, not ours to publish. Node IDs are fine to
+record; coordinates are not.
 
 ## Which firmware is on the board
 

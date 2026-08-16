@@ -20,3 +20,8 @@ device-config.yaml
 # grants are not.
 .claude/settings.local.json
 .claude/scheduled_tasks.lock
+
+# Local-only notes. Peer positions are other operators' locations: useful for
+# making contact locally, not ours to publish.
+*.local.md
+doc/*.local.md
