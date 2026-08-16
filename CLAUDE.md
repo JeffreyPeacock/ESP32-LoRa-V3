@@ -67,6 +67,46 @@ name would work against that.
 Renaming is free while MQTT is off and permanent once it is on, so the decision
 point is #5, not #2. Ask before setting a name.
 
+## There is an active mesh in range of FLG (#3)
+
+Surveyed 2026-08-15 with the stock LongFast channel and default key. **FLG is
+not isolated.** This changes planning: real RF peers exist to test against, so
+link behaviour no longer has to wait on SJC.
+
+- **14 nodes** entered the NodeDB within ~35 minutes of setting the region.
+- **25 packets from 11 distinct senders** in a single 5-minute capture.
+- Typical signal **SNR −5 to −6 dB, RSSI ≈ −97 dBm**; the best peer sits at
+  **+0.75 dB**.
+- Hop spread: 1 node at 0 hops, 2 at 1, 5 at 2, 3 at 3.
+
+Useful peers, by node ID — these are stable and worth reusing as test targets:
+
+| Node | Hops | Note |
+|---|---|---|
+| `!efa18420` | 0 | Direct neighbour. Busiest sender. |
+| `!fe716141` (`MRC`) | 0 | Direct, SNR −11 dB |
+| `!9c594d28` (`FLG1`) | 1 | Heltec Mesh Pocket; name suggests a local node |
+| `085e15cb` | — | The relay both traceroutes pass through — the local mesh leans on it |
+
+Traceroute shows **asymmetric routing**, which is normal and worth remembering
+when a one-way test looks like a failure:
+
+```
+towards:  !f6fb8e00 --> efa18420 (-15.5dB)
+back:     efa18420 --> 085e15cb (-3.5dB) --> !f6fb8e00 (-1.0dB)
+```
+
+**Do not commit other operators' positions.** Several nodes broadcast lat/lon.
+Node IDs are already public on the mesh and on MQTT maps; coordinates are
+someone else's location and stay out of this repository.
+
+### Timestamps from the node are not wall-clock
+
+With no GPS and no network time, `lastHeard` is seeded from the **firmware build
+epoch**, so `--nodes` renders live traffic as "1 month ago". Our own node reads
+the same way, which is the giveaway. Trust relative ordering, not dates — and
+use a live capture when recency matters.
+
 ## Which firmware is on the board
 
 The board holds one firmware at a time and there is no way to tell from the
