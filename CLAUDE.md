@@ -49,6 +49,29 @@ MAC `44:1B:F6:FB:8E:00`, ESP32-S3 rev v0.2, 8 MB flash, no PSRAM.
 `ESP.getEfuseMac()` returns the MAC **little-endian** — octet 1 of the printed
 address is the low byte. Printing high-byte-first silently reverses it.
 
+FLG's Meshtastic node ID is **`!f6fb8e00`** — the low four bytes of the MAC. It
+is derived, not configured, so it survives reflashing and factory reset. This is
+the address the other sites need.
+
+## Which firmware is on the board
+
+The board holds one firmware at a time and there is no way to tell from the
+outside. Check before assuming:
+
+```bash
+./scripts/heltec-dev.sh raw     # tap RST, read the banner, Ctrl-C
+```
+
+`==== Heltec WiFi LoRa 32 V3 bring-up ====` is the PlatformIO diagnostic;
+Meshtastic and RNode announce themselves in their own boot logs.
+
+**`./scripts/heltec-dev.sh flash` overwrites whatever is there** with the
+PlatformIO diagnostic. That is the intended escape hatch for proving hardware,
+but run `meshtastic --export-config` first if there is configuration worth
+keeping — channel PSKs included, which is why those exports are gitignored.
+
+As of #1 the board runs Meshtastic **2.7.26.54e0d8d**, target `heltec-v3`.
+
 ## Serial port
 
 The USB-C port does **not** reach the ESP32-S3's native USB. It goes to a
