@@ -388,7 +388,27 @@ IDs, gates and hardware realities of this repo.
 | `/merge-pr N` | Verify locally, squash-merge, move tickets to Completed |
 | `/board-check` | Verify host, serial path and radio; report which firmware is loaded |
 | `/priority-review` | Rebuild `doc/ticket-priority-review.md`, the at-a-glance Quick View |
+| `/export-transcript` | Render the session log as text, with secrets masked |
 | `/create-plan` | Enter plan mode for a task |
+
+## Session transcripts carry secrets
+
+`scripts/export-transcript.sh` renders a session log as text and masks secrets
+while doing it. Masking is on by default and the script refuses to write to any
+path inside the repository that is not gitignored.
+
+This is not hypothetical. A single session here captured a WiFi PSK -- because
+the Meshtastic CLI **echoes the value it sets**, so "run it yourself so it stays
+out of the transcript" does not work -- and a Meshtastic channel URL, which
+encodes **every channel's pre-shared key**.
+
+Project-specific literals go in `.claude_artifacts/mask-secrets.txt`, one per
+line. Prefer that to `--secret` on the command line: an argument lands in shell
+history and then in the *next* transcript.
+
+The script verifies its own output by re-running the masking patterns against
+the finished file, so the check and the fix share one definition and cannot
+drift apart. It still only knows the patterns it was given.
 
 ## Commits
 

@@ -117,19 +117,68 @@ static bool initRadio() {
   return true;
 }
 
-// Returns pack voltage in volts, or 0 when nothing is plugged into JST.
-static float readBatteryVolts() {
+// Averaged reading at the ADC pin, in millivolts — this is the divider *output*,
+// not the pack voltage. Returns 0 when nothing is plugged into the JST.
+static float readDividerMillivolts() {
   pinMode(ADC_CTRL, OUTPUT);
   digitalWrite(ADC_CTRL, LOW);  // connect the divider
-  delay(20);
+  delay(50);                    // let it settle before the first sample
 
+  constexpr int kSamples = 64;
   uint32_t accum = 0;
-  for (int i = 0; i < 16; ++i) {
+  for (int i = 0; i < kSamples; ++i) {
     accum += analogReadMilliVolts(VBAT_ADC);
+    delay(2);
   }
-  digitalWrite(ADC_CTRL, HIGH);  // disconnect it again
+  digitalWrite(ADC_CTRL, HIGH);  // disconnect it again, so it stops draining
 
-  return (accum / 16.0f) * VBAT_DIVIDER / 1000.0f;
+  return accum / static_cast<float>(kSamples);
+}
+
+// Prints everything needed to calibrate VBAT_DIVIDER from a single meter
+// reading, so the constant can be fixed without reflashing to iterate.
+//
+// The divider is the ratio between pack voltage and what the ADC sees:
+//     VBAT_DIVIDER = V_pack_measured / (raw_mV / 1000)
+//
+// 4.9 is Heltec's published figure for the 390k/100k pair. The real value
+// differs because the ADC's input impedance loads the divider, and because the
+// ESP32-S3's ADC is only as good as its calibration -- if the boot log says
+// "Characterized using Default Vref", this chip has no factory eFuse constant
+// and the reading carries a few percent of error on its own.
+//
+// One point is enough for a ratio. A second reading at a lower state of charge
+// would additionally show whether the error is a clean scale factor or has an
+// offset, which is what ADC non-linearity near the rails looks like.
+static void reportBattery() {
+  const float raw_mv = readDividerMillivolts();
+  const float raw_v = raw_mv / 1000.0f;
+
+  Serial.printf("  raw ADC      : %.1f mV  (mean of 64 on GPIO%d)\n", raw_mv,
+                VBAT_ADC);
+
+  if (raw_mv < 200.0f) {
+    Serial.println("  -> no pack detected; running from USB only.");
+    Serial.println("     Calibration needs a battery on the JST connector.");
+    return;
+  }
+
+  Serial.printf("  VBAT_DIVIDER : %.3f  (include/board_pins.h)\n",
+                VBAT_DIVIDER);
+  Serial.printf("  computed VBAT: %.3f V\n", raw_v * VBAT_DIVIDER);
+
+  Serial.println("\n  -- calibration --");
+  Serial.println("  Measure the pack at the JST connector with a meter, then:");
+  Serial.printf("      VBAT_DIVIDER = V_meter / %.4f\n", raw_v);
+  Serial.println("  Read your meter value from this table:");
+  for (float v = 3.60f; v <= 4.25f; v += 0.05f) {
+    Serial.printf("      %.2f V -> %.3f\n", v, v / raw_v);
+  }
+  Serial.println("  USB may stay connected. The divider ratio is a property of");
+  Serial.println("  the resistors and the ADC, not of what is driving the node,");
+  Serial.println("  and the meter sees the same node the ADC does. On USB the");
+  Serial.println("  charger merely pins that node near 4.2 V, so the ratio is");
+  Serial.println("  still valid — it is only measured at the top of the range.");
 }
 
 void setup() {
@@ -154,9 +203,7 @@ void setup() {
   const bool radioOk = initRadio();
 
   Serial.println("\n-- battery --");
-  const float vbat = readBatteryVolts();
-  Serial.printf("  VBAT %.2f V %s\n", vbat,
-                vbat < 2.5f ? "(no pack, or running from USB only)" : "");
+  reportBattery();
 
   Serial.printf("\nresult: OLED %s, radio %s\n", oledOk ? "ok" : "MISSING",
                 radioOk ? "ok" : "FAILED");

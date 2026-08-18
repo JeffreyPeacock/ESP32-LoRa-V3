@@ -253,6 +253,7 @@ scripts/lib/            shared shell helpers
 .claude/commands/       slash commands for issue and board workflow
 doc/                    ticket Quick View, regenerated from the board
 doc/mqtt-broker-vps.md  running and hardening a broker for the multi-site link
+.claude_artifacts/       transcripts and local notes — gitignored in full
 ```
 
 ## Sites
