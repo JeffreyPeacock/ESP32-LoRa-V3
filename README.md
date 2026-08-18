@@ -231,6 +231,28 @@ over Bluetooth. It is still reachable three other ways: the phone app can add it
 as a **network device on port 4403**, a browser can use the **web UI on port
 80**, and the CLI takes `--host <ip>` in place of `--port`.
 
+## Power and runtime
+
+From the Heltec datasheet (Rev 1.1, Table 3.4), whole board:
+
+| Mode | Current |
+|---|---:|
+| Receive (TX disabled) | **90 mA** |
+| Bluetooth | 115 mA |
+| Transmit @ 22 dBm | 230 mA |
+| Sleep, on battery | 15 µA |
+
+On a 3000 mAh cell that is **roughly one day** of ordinary use — listening,
+paired to a phone, relaying for the mesh. The ESP32 staying awake to receive
+dominates; transmitting is brief enough that its higher current barely matters.
+
+Multi-day runtimes need Meshtastic's `is_power_saving`, which switches off
+Bluetooth, WiFi and the screen — useful for an unattended beacon, not for a
+device you message from.
+
+USB and battery switch over automatically: with USB attached the board runs from
+USB and charges the pack.
+
 ## On range
 
 FTG1 to SJC is roughly 900 km. There is no direct LoRa path at that distance —

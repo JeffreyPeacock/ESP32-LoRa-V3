@@ -260,6 +260,29 @@ on the dedicated `mqtt` channel.
 - **mosquitto 2.x defaults to localhost-only and denies anonymous.** It needs
   `listener 1883 0.0.0.0` and `allow_anonymous true` in `/etc/mosquitto/conf.d/`.
 
+## The diagnostic firmware is deaf to the mesh
+
+`src/main.cpp` sets `RADIOLIB_SX126X_SYNC_WORD_PRIVATE` (0x12) at SF9/BW125.
+Meshtastic uses a different sync word and SF11/BW250. **The SX1262 only raises a
+receive interrupt for a matching sync word and modulation**, so the diagnostic
+firmware cannot hear a single packet of the 115-node mesh around it. That is
+correct behaviour, not a fault — do not go hunting for a broken radio.
+
+The same mechanism is why a Meshtastic node repeats nothing but Meshtastic:
+
+- **What it can hear** is a hardware filter — sync word, SF, BW, CR, frequency.
+  LoRaWAN uses sync word 0x34 and SF7–SF10 at 125/500 kHz, so it is rejected in
+  the modem before firmware sees a byte.
+- **What it forwards** is firmware — hop limit, dedup, `rebroadcastMode`.
+
+With `rebroadcastMode: ALL` (our default) a node relays packets on channels it
+**cannot decrypt**. That is how a shared LongFast carrier serves everyone's
+private channels — and why strangers' radios carry our `mqtt` channel traffic.
+
+Repeating is not a property of the radio. Our `CLIENT` node already relays for
+others; `ROUTER` mainly means well-sited infrastructure that rebroadcasts
+promptly.
+
 ## Reaching a headless node on WiFi
 
 WiFi and BLE are mutually exclusive on ESP32, so a node using its own WiFi is
@@ -306,6 +329,34 @@ but run `meshtastic --export-config` first if there is configuration worth
 keeping — channel PSKs included, which is why those exports are gitignored.
 
 As of #1 the board runs Meshtastic **2.7.26.54e0d8d**, target `heltec-v3`.
+
+## Power draw, from the datasheet (not estimated)
+
+Heltec datasheet Rev 1.1 Table 3.4, whole board, measured USB-powered:
+
+| Mode | Current |
+|---|---:|
+| RX (TX disabled) | **90 mA** |
+| Bluetooth | 115 mA |
+| WiFi scan / AP | 115 / 150 mA |
+| TX @ 22 dBm | 230 mA |
+| Sleep, on battery | 15 µA |
+
+On a 3000 mAh pack that is roughly **one day**, not two. Estimating from
+component datasheets gave 55 mA and was about half the real figure — the
+whole-board number includes the regulator, the OLED and the USB bridge. Use the
+table, not arithmetic from the SX1262 alone.
+
+Two consequences worth remembering:
+
+- **The screen and BLE cost more than transmitting.** TX is 230 mA but the duty
+  cycle is tiny; the ESP32 staying awake to listen dominates.
+- Multi-day runtimes need `is_power_saving`, which disables Bluetooth, WiFi and
+  the screen. That is a beacon, not a messaging device.
+
+The datasheet also confirms **USB/battery automatic switching**: with USB
+attached the board runs from USB and charges the pack. USB together with the 5V
+pin is the one combination that is not allowed.
 
 ## Serial port
 
