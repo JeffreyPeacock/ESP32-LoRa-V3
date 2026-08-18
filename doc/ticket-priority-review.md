@@ -4,21 +4,22 @@ The [LoRa Wide-Area Mesh board](https://github.com/users/JeffreyPeacock/projects
 authoritative detail. This is the at-a-glance ordering the board does not give cleanly, plus a Note
 column that is analysis rather than board data.
 
-**Snapshot:** 2026-08-15 22:50 MST · 5 open · 5 Backlog
+**Snapshot:** 2026-08-17 21:27 MST · 6 open · 4 Backlog · 1 Ready · 1 Prioritized
 
-|  Pri   | #  |  Status | Milestone | Title | Note |
-|:------:|:--:|:-------:|:---------:|-------|------|
-| **p2** | 8  | Backlog |    Solo   | Evaluate Reticulum / RNode on the same board | The likely end state: routes between networks and holds messages for offline nodes. Export the Meshtastic config first — reflashing this board with RNode is known to be awkward. |
-| **p3** | 9  | Backlog |   Multi   | Prepare the handoff packet for the SJC operator | #7 established that a remote link needs the far node on its own WiFi/Ethernet, not a phone proxy. Say so in the handoff. |
-| **p3** | 10 | Backlog |   Multi   | Decide the production backbone and broker | #7 narrowed this: a broker on a private LAN address cannot serve another site. Needs a public host or a VPN. |
-| **p4** | 11 | Backlog |    Solo   | Calibrate VBAT_DIVIDER against a meter | 4.9 is Heltec's figure, never verified here. Needs a pack and a meter; check polarity against the silkscreen first. |
-| **p5** | 12 | Backlog |   Multi   | Bring SNA online | Deferred until FTG1-to-SJC works. The same handoff packet applies. |
+|  Pri   | #  |    Status   | Milestone | Title | Note |
+|:------:|:--:|:-----------:|:---------:|-------|------|
+| **p2** | 8  |   Backlog   |    Solo   | Evaluate Reticulum / RNode on the same board | The likely end state: routes between networks and holds messages for offline nodes. Export the Meshtastic config first — reflashing this board with RNode is known to be awkward. |
+| **p2** | 13 |    Ready    |    Solo   | Flash the diagnostic and settle the ADC_CTRL polarity | Testable with no battery: the charger rail gives ~845 mV on the correct polarity and ~0 on the wrong one. Settles a documented-as-fact error. |
+| **p3** | 9  |   Backlog   |   Multi   | Prepare the handoff packet for the SJC operator | #7 established that a remote link needs the far node on its own WiFi/Ethernet, not a phone proxy. Say so in the handoff. |
+| **p3** | 10 |   Backlog   |   Multi   | Decide the production backbone and broker | #7 narrowed this: a broker on a private LAN address cannot serve another site. Needs a public host or a VPN. |
+| **p4** | 11 | Prioritized |    Solo   | Calibrate VBAT_DIVIDER against a meter | Blocked by #13 — cannot calibrate a divider that will not connect. Also needs a pack and a meter. |
+| **p5** | 12 |   Backlog   |   Multi   | Bring SNA online | Deferred until FTG1-to-SJC works. The same handoff packet applies. |
 
 ## Tally
 
 | Priority | p1 | p2 | p3 | p4 | p5 | — | Total |
 |:--------:|:--:|:--:|:--:|:--:|:--:|:-:|:-----:|
-|   Open   | 0  | 1  | 2  | 1  | 1  | 0 |   5   |
+|   Open   | 0  | 2  | 2  | 1  | 1  | 0 |   6   |
 
 &nbsp;
 
