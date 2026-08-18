@@ -422,6 +422,8 @@ IDs, gates and hardware realities of this repo.
 | `/export-transcript` | Render the session log as text, with secrets masked |
 | `scripts/peers-report.sh` | Rebuild `doc/peers.local.md` from the radio's NodeDB |
 | `/create-plan` | Enter plan mode for a task |
+| `/trim-claude-md` | Bring this file back under 40k without losing findings |
+| `/prep-compaction` | Fold session findings into the docs before context is lost |
 
 ## Session transcripts carry secrets
 
