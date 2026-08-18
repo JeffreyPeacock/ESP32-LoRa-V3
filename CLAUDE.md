@@ -38,8 +38,15 @@ wrong. `include/board_pins.h` is the authority; use it, not the variant.
   from **DIO2**. Both differ from RadioLib's defaults. Get either wrong and the
   radio initialises cleanly, reports no error, and transmits nothing.
 - `Vext` (GPIO36) is **active LOW** and gates the OLED supply.
-- Battery sense needs `ADC_CTRL` (GPIO37) driven LOW to connect the divider.
-  `VBAT_DIVIDER` is 4.9 and is **uncalibrated** — verify against a meter before
+- Battery sense is gated by `ADC_CTRL` (GPIO37), and **the polarity depends on
+  board revision** — LOW enables it pre-V3.2, HIGH on V3.2 and later. The wrong
+  choice does not error: the divider stays disconnected and the ADC reads ~0,
+  which is indistinguishable from an empty JST. `src/main.cpp` probes both.
+- **A voltage on the battery sense line does not prove a battery is fitted.**
+  With USB attached and no pack, the charger output floats near 4.2 V with
+  nothing to sink it, and Meshtastic duly reports ~4.14 V and ~96%. Confirm a
+  pack by looking at the connector, never from a reading.
+- `VBAT_DIVIDER` is 4.9 and is **uncalibrated** — verify against a meter before
   trusting any reading.
 - The OLED is on its own I2C bus (SDA 17 / SCL 18), not the header pins.
 

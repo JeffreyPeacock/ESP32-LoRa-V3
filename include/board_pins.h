@@ -35,10 +35,17 @@ static constexpr uint8_t OLED_I2C_ADDR = 0x3C;
 // Active LOW: drive LOW to turn the rail on.
 static constexpr uint8_t VEXT_CTRL = 36;
 
-// The battery divider is disconnected until ADC_CTRL is driven LOW, so idle
-// current is not wasted through it. Measured voltage must be scaled back up;
-// the divider is nominally 390k/100k, and Heltec's own examples use 4.9 to
-// account for the ADC input impedance. Calibrate per board against a meter.
+// The battery divider is gated by ADC_CTRL so idle current is not wasted
+// through it. **The polarity is board-revision dependent**: pre-V3.2 boards
+// enable it by driving ADC_CTRL LOW, V3.2 and later by driving it HIGH. Getting
+// it wrong does not error -- the divider simply stays disconnected and the ADC
+// reads near zero, which looks exactly like "no battery fitted".
+//
+// src/main.cpp probes both polarities rather than assuming one.
+//
+// Measured voltage must be scaled back up; the divider is nominally 390k/100k,
+// and Heltec's own examples use 4.9 to account for the ADC input impedance.
+// Calibrate per board against a meter.
 static constexpr uint8_t ADC_CTRL = 37;
 static constexpr uint8_t VBAT_ADC = 1;
 static constexpr float VBAT_DIVIDER = 4.9f;
