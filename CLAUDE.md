@@ -117,8 +117,32 @@ Useful peers, by node ID — these are stable and worth reusing as test targets:
 |---|---|---|
 | `!efa18420` | 0 | Direct neighbour. Busiest sender. |
 | `!fe716141` (`MRC`) | 0 | Direct, SNR −11 dB |
-| `!9c594d28` (`FLG1`) | 1 | Heltec Mesh Pocket; name suggests a local node |
-| `085e15cb` | — | The relay both traceroutes pass through — the local mesh leans on it |
+| `!9c594d28` (`FLG1`) | 1 | Heltec Mesh Pocket, ~1.4 km |
+| `!085e15cb` (`Eldn`) | 0 | Elden-Rptr-1-Mesh — the relay everything leaves town through |
+| `!1fa06b14` (`tr`) | 1 | ROUTER 100 km WSW; the next hop after Eldn toward Prescott |
+
+### The path off the Flagstaff bowl is two routers, not one
+
+Traceroute to a Prescott-area node:
+
+```
+towards: FTG1 --> !085e15cb (1.0dB) --> !1fa06b14 (-5.75dB) --> !b03b38dc (4.5dB)
+back:    !b03b38dc --> !1fa06b14 (-2.75dB) --> !085e15cb (-12.25dB) --> FTG1
+```
+
+`Eldn` does not see Prescott. It spans **103.7 km SW to `!1fa06b14`**, which serves
+the Prescott area. Do not attribute the whole southwest reach to one node.
+
+### The link to Eldn is diffraction, not line of sight
+
+Eldn sits on the **north** side of Mt. Elden at 2705 m; FTG1 is on the south side
+at 2103 m. The summit (2835 m) lies 58% along the 4.64 km path and stands **384 m
+above the line of sight — twenty times the first Fresnel radius**. Deeply
+obstructed, and yet it is a reliable 0-hop link at ~0 dB SNR.
+
+**On this terrain, `hopsAway: 0` says nothing about line of sight.** A 915 MHz
+LoRa link with SF11 has enough budget to diffract over a sharp ridge. Do not
+infer geometry from hop counts, and do not infer a path from elevation alone.
 
 Traceroute shows **asymmetric routing**, which is normal and worth remembering
 when a one-way test looks like a failure:
@@ -396,6 +420,7 @@ IDs, gates and hardware realities of this repo.
 | `/board-check` | Verify host, serial path and radio; report which firmware is loaded |
 | `/priority-review` | Rebuild `doc/ticket-priority-review.md`, the at-a-glance Quick View |
 | `/export-transcript` | Render the session log as text, with secrets masked |
+| `scripts/peers-report.sh` | Rebuild `doc/peers.local.md` from the radio's NodeDB |
 | `/create-plan` | Enter plan mode for a task |
 
 ## Session transcripts carry secrets
