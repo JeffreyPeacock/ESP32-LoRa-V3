@@ -379,7 +379,7 @@ labels.
 | Priority options | p1 `768405dd` · p2 `bded9378` · p3 `baa61257` · p4 `90f2d0b0` · p5 `77dadab6` |
 | Repo node | `R_kgDOT5oIVQ` |
 
-Labels: `hardware` `meshtastic` `mqtt` `reticulum` `rf` `coordination`
+Labels: `hardware` `meshtastic` `mqtt` `reticulum` `rf` `lorawan` `coordination`
 `decision`. Milestones: **Solo bring-up** (verifiable with only FTG1) and
 **Multi-site link** (needs an operator at SJC or SNA). The milestone test is
 verifiability, not subject matter.

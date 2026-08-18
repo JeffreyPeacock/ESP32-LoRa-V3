@@ -4,7 +4,7 @@ The [LoRa Wide-Area Mesh board](https://github.com/users/JeffreyPeacock/projects
 authoritative detail. This is the at-a-glance ordering the board does not give cleanly, plus a Note
 column that is analysis rather than board data.
 
-**Snapshot:** 2026-08-17 21:27 MST · 6 open · 4 Backlog · 1 Ready · 1 Prioritized
+**Snapshot:** 2026-08-17 22:25 MST · 7 open · 5 Backlog · 1 Ready · 1 Prioritized
 
 |  Pri   | #  |    Status   | Milestone | Title | Note |
 |:------:|:--:|:-----------:|:---------:|-------|------|
@@ -14,12 +14,13 @@ column that is analysis rather than board data.
 | **p3** | 10 |   Backlog   |   Multi   | Decide the production backbone and broker | #7 narrowed this: a broker on a private LAN address cannot serve another site. Needs a public host or a VPN. |
 | **p4** | 11 | Prioritized |    Solo   | Calibrate VBAT_DIVIDER against a meter | Blocked by #13 — cannot calibrate a divider that will not connect. Also needs a pack and a meter. |
 | **p5** | 12 |   Backlog   |   Multi   | Bring SNA online | Deferred until FTG1-to-SJC works. The same handoff packet applies. |
+| **p5** | 14 |   Backlog   |    Solo   | LoRaWAN gateway to Meshtastic bridge for long-life field sensors | Independent of the multi-site link. LoRaWAN sensors sleep (years on a cell); Meshtastic nodes listen (a day). That asymmetry is the whole argument. |
 
 ## Tally
 
 | Priority | p1 | p2 | p3 | p4 | p5 | — | Total |
 |:--------:|:--:|:--:|:--:|:--:|:--:|:-:|:-----:|
-|   Open   | 0  | 2  | 2  | 1  | 1  | 0 |   6   |
+|   Open   | 0  | 2  | 2  | 1  | 2  | 0 |   7   |
 
 &nbsp;
 

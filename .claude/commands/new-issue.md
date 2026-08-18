@@ -27,6 +27,7 @@ Only ask for what is genuinely missing.
 | `mqtt` | Broker, bridging, uplink/downlink, injection |
 | `reticulum` | Reticulum / RNode / LXMF |
 | `rf` | On-air behaviour, range, survey, antennas in use |
+| `lorawan` | LoRaWAN — the star-topology protocol, not the mesh |
 | `coordination` | Depends on an operator at another site |
 | `decision` | An open choice still to be settled |
 
