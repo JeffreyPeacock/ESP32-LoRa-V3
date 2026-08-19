@@ -56,10 +56,15 @@ mkdir -p -- "$(dirname -- "${OUT_PATH}")"
 
 # Peer coordinates belong to other people. Never let this land in git.
 ABS_OUT="$(realpath -m -- "${OUT_PATH}")"
+# The JSON ledger holds the same coordinates as the report, so it needs the
+# same protection. Checking only the .md would leave the durable copy exposed.
+ABS_LEDGER="${ABS_OUT%.md}.json"
 if [[ ${ABS_OUT} == "${PROJECT_DIR}"/* ]] \
    && git -C "${PROJECT_DIR}" rev-parse --is-inside-work-tree >/dev/null 2>&1; then
-    git -C "${PROJECT_DIR}" check-ignore -q "${ABS_OUT}" 2>/dev/null \
-        || die "${OUT_PATH} is not gitignored — it would publish other operators' positions"
+    for guarded in "${ABS_OUT}" "${ABS_LEDGER}"; do
+        git -C "${PROJECT_DIR}" check-ignore -q "${guarded}" 2>/dev/null \
+            || die "${guarded#"${PROJECT_DIR}"/} is not gitignored — it would publish other operators' positions"
+    done
 fi
 
 section 'peers report'
@@ -118,6 +123,47 @@ for nid, n in nodes.items():
                      hops=n.get('hopsAway'), heard=n.get('lastHeard'),
                      lat=p.get('latitude'), lon=p.get('longitude'), alt=p.get('altitude'),
                      batt=m.get('batteryLevel')))
+
+# --- durable ledger -------------------------------------------------------
+# The radio's NodeDB ages entries out, so a node heard last week silently
+# disappears from a fresh scan. Everything ever seen is accumulated in a JSON
+# ledger beside this report and merged back in, so the report is a record of
+# what we have heard rather than a snapshot of what is still resident.
+# Fields are only overwritten when the new scan actually has a value.
+LEDGER = OUT.rsplit('.md', 1)[0] + '.json'
+try:
+    with open(LEDGER, encoding='utf-8') as fh:
+        ledger = json.load(fh)
+except (OSError, ValueError):
+    ledger = {}
+
+today = datetime.date.today().isoformat()
+live = {r['id'] for r in rows}
+for r in rows:
+    prev = ledger.get(r['id'], {})
+    merged = dict(prev)
+    for k, v in r.items():
+        if v is not None and v != '':
+            merged[k] = v
+    merged['first_seen'] = prev.get('first_seen', today)
+    merged['last_scan'] = today
+    ledger[r['id']] = merged
+
+# Nodes in the ledger that this scan did not see: keep them, flag them. Every
+# record must carry the full key set -- a node first seen without a position
+# would otherwise have no 'lat' at all and break the renderer.
+FIELDS = ('id','short','long','hw','role','snr','hops','heard','lat','lon','alt','batt')
+for nid, rec in ledger.items():
+    rec['in_nodedb'] = nid in live
+    rec['id'] = nid
+    for k in FIELDS:
+        rec.setdefault(k, None)
+
+with open(LEDGER, 'w', encoding='utf-8') as fh:
+    json.dump(ledger, fh, indent=1, sort_keys=True, default=str)
+
+gone = [rec for nid, rec in ledger.items() if not rec.get('in_nodedb')]
+rows = list(ledger.values())
 
 withpos = sorted([r for r in rows if r['lat'] is not None], key=lambda r: geo(r['lat'],r['lon'])[0])
 nopos   = sorted([r for r in rows if r['lat'] is None],
@@ -184,14 +230,30 @@ if near:
 else:
     L.append(f'- none positioned within {NEAR:.0f} mi')
 
+if gone:
+    L.append(f'\n## Heard before, no longer in the NodeDB ({len(gone)})\n')
+    L.append('Aged out of the radio\'s NodeDB but retained here. Last figures are')
+    L.append('whatever we last recorded, not current.\n')
+    L.append('| Node | Short | Name | Hops | SNR | Dist | Brg | First seen | Last scan |')
+    L.append('|---|---|---|:---:|---:|---:|:---:|---:|---:|')
+    for r in sorted(gone, key=lambda r: (r.get('last_scan') or '', r.get('short') or '')):
+        g = geo(r['lat'], r['lon']) if r.get('lat') is not None else None
+        d = f'{g[0]:.1f} mi ({g[1]:.1f} km)' if g else '—'
+        L.append(f"| `{r['id']}` | **{r.get('short') or '—'}** | {r.get('long') or '—'} | "
+                 f"{hop(r)} | {snr(r)} | {d} | {g[2] if g else '—'} | "
+                 f"{r.get('first_seen','?')} | {r.get('last_scan','?')} |")
+
 L.append('\n## Notes\n')
 L.append('- Positions carry whatever precision each operator configured; treat them as approximate.')
 L.append('- Timestamps are only meaningful while the device clock is set — the phone sets it over')
 L.append('  BLE, otherwise `meshtastic --set-time` after each reboot.')
+L.append('- Every node ever seen is kept in `peers.local.json` beside this file and')
+L.append('  merged back in on each run, so nothing is lost when the NodeDB ages out.')
 L.append('- Regenerate with `./scripts/peers-report.sh`.\n')
 
 open(OUT,'w',encoding='utf-8').write("\n".join(L)+"\n")
-print(f"  {len(rows)} peers, {len(withpos)} positioned, {len(routers)} routers, {len(near)} within {NEAR:.0f} mi")
+print(f"  {len(rows)} peers ({len(live)} in NodeDB, {len(gone)} retained), "
+      f"{len(withpos)} positioned, {len(routers)} routers, {len(near)} within {NEAR:.0f} mi")
 iface.close()
 PYTHON
 

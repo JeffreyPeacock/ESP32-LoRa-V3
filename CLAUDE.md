@@ -180,9 +180,19 @@ capture when recency matters.
 ### Peer positions are not committed
 
 Many peers broadcast lat/lon. Those are other operators' locations. They are
-kept in `docs/peers.local.md`, which `.gitignore` excludes via `docs/*.local.md` —
+kept in `docs/peers.local.md`, which `.gitignore` excludes via `docs/*.local.*` —
 useful for making contact locally, not ours to publish. Node IDs are fine to
 record; coordinates are not.
+
+**The NodeDB ages entries out, so a scan is not a record.** `peers-report.sh`
+accumulates everything ever seen into `docs/peers.local.json` and merges it back
+on each run; nodes the radio has forgotten appear under "Heard before, no longer
+in the NodeDB". The ledger carries the same coordinates as the report and the
+script refuses to run unless **both** are gitignored.
+
+**Local secrets live in `etc/secrets/`**, ignored as a whole directory rather
+than by file pattern. Device config exports go there: they carry channel PSKs,
+the WiFi PSK, and `security.privateKey`, which is the node's PKI identity.
 
 ## Normal operating mode is BLE, no network
 

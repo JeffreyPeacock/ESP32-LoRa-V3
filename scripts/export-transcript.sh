@@ -238,6 +238,17 @@ PATTERNS = [
      r'(--ch-set\s+psk\s+)(0x[0-9a-fA-F]{16,})'),
     ('mqtt password',
      r'(mqtt\.password\s+)(?!\*)(\S{4,})'),
+    # security.privateKey from `meshtastic --export-config`. This is the node's
+    # PKI identity: it decrypts direct messages addressed to us and can be used
+    # to impersonate the node. It leaked into a session on 2026-08-19 because
+    # nothing here matched it.
+    ('node private key',
+     r'(privateKey\s*:\s*(?:base64:)?)(?!\*)([A-Za-z0-9+/=]{16,})'),
+    # Not a secret, but it names the operator's home network.
+    ('wifi ssid (yaml)',
+     r'(wifiSsid\s*:\s+)(?!\*)(\S+)'),
+    ('wifi ssid (argument)',
+     r'(--set\s+network\.wifi_ssid\s+)(?!\*)([\'"]?[^\'"\s]+[\'"]?)'),
 ]
 
 masked = {}

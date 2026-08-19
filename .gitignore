@@ -16,6 +16,12 @@ get-platformio.py
 *.config.yaml
 device-config.yaml
 
+# All local secrets live in one place so we know where they are.
+# Device config exports carry channel PSKs, the node private key and the WiFi
+# PSK. Ignore the directory itself, not just what we happen to name today.
+etc/secrets/
+secrets/
+
 # Claude Code: commands and shared settings are committed; per-user permission
 # grants are not.
 .claude/settings.local.json
@@ -24,7 +30,8 @@ device-config.yaml
 # Local-only notes. Peer positions are other operators' locations: useful for
 # making contact locally, not ours to publish.
 *.local.md
-docs/*.local.md
+*.local.json
+docs/*.local.*
 
 # Local-only scripts. These carry credentials (WiFi PSK, broker passwords) and
 # must never reach a public repository.
