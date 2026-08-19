@@ -24,9 +24,12 @@ device-config.yaml
 # Local-only notes. Peer positions are other operators' locations: useful for
 # making contact locally, not ours to publish.
 *.local.md
-doc/*.local.md
+docs/*.local.md
 
 # Local-only scripts. These carry credentials (WiFi PSK, broker passwords) and
 # must never reach a public repository.
 *.local.sh
 scripts/local-*.sh
+
+# A contributor's plain virtualenv, if they use one instead of pyenv.
+.venv/

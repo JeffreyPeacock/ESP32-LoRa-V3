@@ -23,10 +23,59 @@ cd ESP32-LoRa-V3
 ./scripts/heltec-dev.sh flash       # build, upload, then open the serial monitor
 ```
 
-Requires `pyenv` with the
-[pyenv-virtualenv](https://github.com/pyenv/pyenv-virtualenv) plugin. If you only
-need to configure a radio and will never compile firmware, run the installer with
-`--skip-platformio` and skip a ~2 GB toolchain download.
+`install-toolchain.sh` uses `pyenv`, but the scripts do not — see [Python
+environment](#python-environment) if you would rather use a plain virtualenv. If
+you only need to configure a radio and will never compile firmware, run the
+installer with `--skip-platformio` and skip a ~2 GB toolchain download.
+
+## Python environment
+
+Two of the tools this project drives are Python programs: the **Meshtastic CLI**,
+which configures the radio, and **esptool**, which flashes it. They need to live
+in a virtualenv somewhere. Which kind is your choice.
+
+**This project is developed against pyenv**, because the author uses it across
+every project on the machine, and `scripts/install-toolchain.sh` sets up exactly
+that: a `meshtastic` virtualenv pinned to this directory with `pyenv local`. If
+you already use pyenv, run the installer and stop reading here.
+
+**Nothing in the scripts requires pyenv.** `resolve_venv_bin()` in
+`scripts/lib/heltec-common.sh` accepts four layouts and takes the first that has
+a `python` in it:
+
+| Order | Location | When it applies |
+|---|---|---|
+| 1 | `$HELTEC_VENV/bin` | you set it explicitly; wins over everything |
+| 2 | `.venv/bin` in the checkout | a plain virtualenv, the path below |
+| 3 | `$VIRTUAL_ENV/bin` | you have already activated something |
+| 4 | pyenv | nearest `.python-version`, then `$PYENV_ROOT/version` |
+
+So if you do not use pyenv and do not want to install it:
+
+```bash
+python3 -m venv .venv
+.venv/bin/pip install meshtastic esptool
+```
+
+That is the whole setup. **You do not have to activate it** — the scripts find
+`.venv` in the checkout on their own, which is what makes this work from an IDE
+or a cron job. `.venv/` is gitignored.
+
+Two details worth knowing. A `.venv` in the checkout deliberately outranks an
+activated `$VIRTUAL_ENV`, because it names *this* project while an active
+environment could be anything; activating it gives the same answer either way. And
+a candidate missing the tool being asked for is skipped rather than fatal, so a
+half-built `.venv` falls through to a working environment instead of blocking it.
+
+If nothing resolves, the scripts print all four locations they checked and what
+each one was set to, rather than naming pyenv as though it were mandatory.
+
+**PlatformIO is separate and is not in either virtualenv.** `pio` installs to
+`~/.platformio` with its own private `penv` and is symlinked into `~/.local/bin`,
+deliberately, so that every embedded project on the machine shares one PlatformIO
+rather than one per project. Anything checking for the build toolchain must look
+for `pio` on `PATH`, not inside the virtualenv. Compiling firmware needs it;
+configuring a radio does not.
 
 ## Scripts
 
@@ -273,10 +322,55 @@ src/main.cpp            bring-up diagnostic firmware
 scripts/                install, host setup, build and flash
 scripts/lib/            shared shell helpers
 .claude/commands/       slash commands for issue and board workflow
-doc/                    ticket Quick View, regenerated from the board
-doc/mqtt-broker-vps.md  running and hardening a broker for the multi-site link
+docs/                    ticket Quick View, regenerated from the board
+docs/datasheets/         vendor PDFs for every chip on the board
+docs/mqtt-broker-vps.md  running and hardening a broker for the multi-site link
 .claude_artifacts/       transcripts and local notes — gitignored in full
 ```
+
+## Hardware references
+
+Every PDF below is mirrored in `docs/datasheets/` so a developer can work
+offline, and because vendor download URLs move. The links are the authoritative
+copies — check them if a figure here looks wrong.
+
+**This board is the one Heltec calls HTIT-WB32LA.** Both the V3 and the V3.2
+datasheets are included: the two revisions differ in ways that matter, most
+notably the `ADC_CTRL` polarity that gates battery sense, so the schematics are
+worth comparing rather than assuming.
+
+| Document | Rev | Pages | Source |
+|---|---|---:|---|
+| Heltec WiFi LoRa 32 (V3) datasheet | 1.1 | 15 | [HTIT-WB32LA_V3(Rev1.1).pdf](https://resource.heltec.cn/download/WiFi_LoRa_32_V3/HTIT-WB32LA_V3\(Rev1.1\).pdf) |
+| Heltec WiFi LoRa 32 (V3.2) datasheet | 1.1 | 15 | [HTIT-WB32LA_V3.2.pdf](https://resource.heltec.cn/download/WiFi_LoRa_32_V3/HTIT-WB32LA_V3.2.pdf) |
+| Heltec V3 schematic | — | 1 | [HTIT-WB32LA(F)_V3_Schematic_Diagram.pdf](https://resource.heltec.cn/download/WiFi_LoRa_32_V3/HTIT-WB32LA\(F\)_V3_Schematic_Diagram.pdf) |
+| Heltec V3.1 schematic | — | 1 | [HTIT-WB32LA(F)_V3.1_Schematic_Diagram.pdf](https://resource.heltec.cn/download/WiFi_LoRa_32_V3/HTIT-WB32LA\(F\)_V3.1_Schematic_Diagram.pdf) |
+| Heltec V3.2 schematic | — | 1 | [WiFi_LoRa_32_V3.2_Schematic_Diagram.pdf](https://resource.heltec.cn/download/WiFi_LoRa_32_V3/WiFi_LoRa_32_V3.2_Schematic_Diagram.pdf) |
+| Semtech SX1261/2 radio | 1.2 | 111 | [SX1262_datasheet.pdf](https://cdn.sparkfun.com/assets/6/b/5/1/4/SX1262_datasheet.pdf) |
+| Espressif ESP32-S3 datasheet | 2.2 | 87 | [esp32-s3_datasheet_en.pdf](https://www.espressif.com/sites/default/files/documentation/esp32-s3_datasheet_en.pdf) |
+| Espressif ESP32-S3 technical reference manual | 1.8 | 1531 | [esp32-s3_technical_reference_manual_en.pdf](https://www.espressif.com/sites/default/files/documentation/esp32-s3_technical_reference_manual_en.pdf) |
+| Solomon Systech SSD1306 OLED controller | 1.1 | 65 | [SSD1306.pdf](https://cdn-shop.adafruit.com/datasheets/SSD1306.pdf) |
+| Silicon Labs CP2102N USB-UART bridge | — | 48 | [cp2102n-datasheet.pdf](https://www.silabs.com/documents/public/data-sheets/cp2102n-datasheet.pdf) |
+
+Two of these answer questions that come up repeatedly:
+
+- **Power figures come from Heltec Table 3.4**, page 11 of the V3 datasheet, and
+  they are whole-board measurements. Do not rebuild them by adding up the
+  SX1262 and ESP32-S3 numbers — that undercounts by roughly half, because it
+  misses the regulator, the OLED and the USB bridge. See [Power and
+  runtime](#power-and-runtime).
+- **The SX1262 datasheet is the authority for the TCXO and RF-switch settings**
+  that `include/board_pins.h` sets. Getting either wrong lets the radio
+  initialise cleanly and transmit nothing.
+
+Beyond the silicon:
+
+- [Heltec WiFi LoRa 32 (V3) product page](https://heltec.org/project/wifi-lora-32-v3/)
+  and [documentation](https://docs.heltec.org/en/node/esp32/wifi_lora_32/index.html)
+- [Heltec V3 download directory](https://resource.heltec.cn/download/WiFi_LoRa_32_V3/) — where the PDFs above come from
+- [Meshtastic firmware](https://github.com/meshtastic/firmware) and [documentation](https://meshtastic.org/docs/)
+- [RadioLib](https://github.com/jgromes/RadioLib) — the driver `src/main.cpp` uses
+- [Reticulum](https://reticulum.network/) and [RNode firmware](https://github.com/markqvist/RNode_Firmware) — the likely end state
 
 ## Sites
 

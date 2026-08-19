@@ -202,3 +202,81 @@ check_port_free() {
         ps -o pid=,user=,comm= -p ${holders} 2>/dev/null || true
     fi
 }
+
+# --- python interpreter ------------------------------------------------------
+
+# Prints the bin directory of the virtualenv holding the Meshtastic CLI and
+# esptool. Takes an optional tool name that the candidate must also contain.
+#
+# This project is developed against a pyenv virtualenv, but nothing here
+# depends on pyenv. Four layouts are accepted, in order, so a contributor who
+# does not use pyenv is not forced to install it:
+#
+#   1. ${HELTEC_VENV}          -- explicit override, wins over everything
+#   2. ${PROJECT_DIR}/.venv    -- a plain `python3 -m venv .venv` in the checkout
+#   3. ${VIRTUAL_ENV}          -- a venv the caller has already activated
+#   4. pyenv                   -- nearest .python-version, then ${PYENV_ROOT}/version
+#
+# A .venv inside the checkout outranks ${VIRTUAL_ENV} because it names *this*
+# project, whereas an activated environment may be anything the caller happened
+# to be in. Activating the .venv gives the same answer either way. A candidate
+# that lacks python, or lacks the requested tool, is skipped rather than fatal,
+# so a half-built .venv falls through instead of blocking the working one.
+#
+# The pyenv branch is resolved directly rather than through the shims. An IDE,
+# a cron job or `su -c` starts a *non-interactive* shell, and Ubuntu's
+# ~/.bashrc returns on its first line for those, so `eval "$(pyenv init -)"`
+# never runs and the shims do not exist.
+resolve_venv_bin() {
+    local want="${1:-}" bin root name='' dir
+    local -a candidates=()
+
+    [[ -n ${HELTEC_VENV:-} ]] && candidates+=("${HELTEC_VENV%/}/bin")
+    candidates+=("${PROJECT_DIR}/.venv/bin")
+    [[ -n ${VIRTUAL_ENV:-} ]] && candidates+=("${VIRTUAL_ENV%/}/bin")
+
+    root="${PYENV_ROOT:-${HOME}/.pyenv}"
+    if [[ -d ${root} ]]; then
+        dir="${PROJECT_DIR}"
+        while [[ ${dir} != '/' ]]; do
+            if [[ -f "${dir}/.python-version" ]]; then
+                name="$(head -n 1 -- "${dir}/.python-version")"
+                break
+            fi
+            dir="$(dirname -- "${dir}")"
+        done
+        if [[ -z ${name} && -f "${root}/version" ]]; then
+            name="$(head -n 1 -- "${root}/version")"
+        fi
+        name="${name//[[:space:]]/}"
+        # pyenv-virtualenv leaves versions/<name> as a symlink into
+        # versions/<python>/envs/<name>, so this one path covers both layouts.
+        [[ -n ${name} ]] && candidates+=("${root}/versions/${name}/bin")
+    fi
+
+    for bin in "${candidates[@]}"; do
+        [[ -x "${bin}/python" ]] || continue
+        [[ -z ${want} || -x "${bin}/${want}" ]] || continue
+        printf '%s\n' "${bin}"
+        return 0
+    done
+    return 1
+}
+
+# The message every caller should print when resolve_venv_bin fails. Kept here
+# so the four search locations are described in exactly one place.
+venv_hint() {
+    cat <<HINT
+no virtualenv found with the Meshtastic CLI and esptool. Looked at:
+  \${HELTEC_VENV}/bin              ${HELTEC_VENV:-(unset)}
+  ${PROJECT_DIR}/.venv/bin
+  \${VIRTUAL_ENV}/bin              ${VIRTUAL_ENV:-(unset)}
+  pyenv, via the nearest .python-version or ${PYENV_ROOT:-${HOME}/.pyenv}/version
+
+Either run ./scripts/install-toolchain.sh (sets up pyenv, what this project
+uses), or make a plain one and point at it:
+  python3 -m venv "${PROJECT_DIR}/.venv"
+  "${PROJECT_DIR}/.venv/bin/pip" install meshtastic esptool
+See "Python environment" in README.md.
+HINT
+}

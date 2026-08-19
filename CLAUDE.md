@@ -180,7 +180,7 @@ capture when recency matters.
 ### Peer positions are not committed
 
 Many peers broadcast lat/lon. Those are other operators' locations. They are
-kept in `doc/peers.local.md`, which `.gitignore` excludes via `doc/*.local.md` —
+kept in `docs/peers.local.md`, which `.gitignore` excludes via `docs/*.local.md` —
 useful for making contact locally, not ours to publish. Node IDs are fine to
 record; coordinates are not.
 
@@ -332,7 +332,9 @@ As of #1 the board runs Meshtastic **2.7.26.54e0d8d**, target `heltec-v3`.
 
 ## Power draw, from the datasheet (not estimated)
 
-Heltec datasheet Rev 1.1 Table 3.4, whole board, measured USB-powered:
+Heltec datasheet Rev 1.1 Table 3.4, page 11, whole board, measured USB-powered.
+Vendor PDFs for every chip are mirrored in `docs/datasheets/`; read them there
+rather than from memory or from a web search:
 
 | Mode | Current |
 |---|---:|
@@ -390,6 +392,16 @@ project on the machine shares one PlatformIO install. Code that checks for the
 toolchain must look for `pio` on PATH, not inside the venv.
 
 `scripts/install-toolchain.sh` reproduces all of this on a fresh machine.
+
+**pyenv is this machine's choice, not a project requirement.** The scripts
+resolve the interpreter through `resolve_venv_bin()` in
+`scripts/lib/heltec-common.sh`, which tries `$HELTEC_VENV`, then `.venv/` in the
+checkout, then `$VIRTUAL_ENV`, then pyenv — first one with a `python` wins, and
+a candidate missing the requested tool is skipped rather than fatal. A
+contributor can `python3 -m venv .venv && .venv/bin/pip install meshtastic
+esptool` and never install pyenv. Do not reintroduce a hard-coded
+`~/.pyenv/versions/meshtastic` path; `peers-report.sh` had one and it was the
+only thing standing between a new developer and a working checkout.
 
 ## Shell script conventions
 
@@ -469,9 +481,9 @@ IDs, gates and hardware realities of this repo.
 | `/backlog-audit` | Groom the board: priorities, milestones, stale assumptions |
 | `/merge-pr N` | Verify locally, squash-merge, move tickets to Completed |
 | `/board-check` | Verify host, serial path and radio; report which firmware is loaded |
-| `/priority-review` | Rebuild `doc/ticket-priority-review.md`, the at-a-glance Quick View |
+| `/priority-review` | Rebuild `docs/ticket-priority-review.md`, the at-a-glance Quick View |
 | `/export-transcript` | Render the session log as text, with secrets masked |
-| `scripts/peers-report.sh` | Rebuild `doc/peers.local.md` from the radio's NodeDB |
+| `scripts/peers-report.sh` | Rebuild `docs/peers.local.md` from the radio's NodeDB |
 | `/create-plan` | Enter plan mode for a task |
 | `/trim-claude-md` | Bring this file back under 40k without losing findings |
 | `/prep-compaction` | Fold session findings into the docs before context is lost |

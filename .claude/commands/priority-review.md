@@ -1,13 +1,13 @@
 # Rebuild the ticket Quick View
 
-Regenerate `doc/ticket-priority-review.md` — a priority-ordered, at-a-glance table of the open
+Regenerate `docs/ticket-priority-review.md` — a priority-ordered, at-a-glance table of the open
 tickets, meant to be read in an open editor tab beside the code.
 
 The board holds the authoritative detail. This doc exists for two things the board does not give:
 **ordering by priority in one screen**, and the **Note** column, which is analysis rather than board
 data. Preserving those Notes across rebuilds is the whole point of this command.
 
-`$ARGUMENTS` may give an alternate output path; it defaults to `doc/ticket-priority-review.md`.
+`$ARGUMENTS` may give an alternate output path; it defaults to `docs/ticket-priority-review.md`.
 
 ## Config
 
@@ -88,7 +88,7 @@ Structure:
 
   ```bash
   python3 - <<'PY'
-  body = open('doc/ticket-priority-review.md').read().split('## Tally')[0]
+  body = open('docs/ticket-priority-review.md').read().split('## Tally')[0]
   rows = [l for l in body.split('\n') if l.startswith('|')]
   cols = zip(*[[len(c.strip()) for c in r.strip('|').split('|')] for r in rows])
   print(dict(zip(['Pri','#','Status','Milestone','Title','Note'], (max(c) for c in cols))))

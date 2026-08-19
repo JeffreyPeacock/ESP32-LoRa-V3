@@ -25,43 +25,12 @@ cd -- "${PROJECT_DIR}"
 
 # --- interpreter -------------------------------------------------------------
 
-# Prints the bin directory of the pyenv virtualenv this project builds under.
-#
-# In an interactive shell the pyenv shims already resolve this, but an IDE, a
-# cron job, or `su -c` does not: those start non-interactive shells, and
-# Ubuntu's ~/.bashrc returns on its first line for non-interactive shells, so
-# `eval "$(pyenv init -)"` never runs. Resolve it directly instead, reproducing
-# what pyenv does: nearest .python-version walking up from the project, then
-# ${PYENV_ROOT}/version.
-resolve_venv_bin() {
-    local root name='' dir bin
-    root="${PYENV_ROOT:-${HOME}/.pyenv}"
-    [[ -d ${root} ]] || return 1
-
-    dir="${PROJECT_DIR}"
-    while [[ ${dir} != '/' ]]; do
-        if [[ -f "${dir}/.python-version" ]]; then
-            name="$(head -n 1 -- "${dir}/.python-version")"
-            break
-        fi
-        dir="$(dirname -- "${dir}")"
-    done
-    if [[ -z ${name} && -f "${root}/version" ]]; then
-        name="$(head -n 1 -- "${root}/version")"
-    fi
-    name="${name//[[:space:]]/}"
-    [[ -n ${name} ]] || return 1
-
-    # pyenv-virtualenv leaves versions/<name> as a symlink into
-    # versions/<python>/envs/<name>, so this one path covers both layouts.
-    bin="${root}/versions/${name}/bin"
-    [[ -x "${bin}/python" ]] || return 1
-    printf '%s\n' "${bin}"
-}
-
-VENV_BIN="$(resolve_venv_bin)" || die "cannot find the pyenv virtualenv for this project;
-       looked for a .python-version from ${PROJECT_DIR} upwards, then
-       ${PYENV_ROOT:-${HOME}/.pyenv}/version. Set PYENV_ROOT if pyenv lives elsewhere."
+# resolve_venv_bin() lives in lib/heltec-common.sh and accepts a pyenv
+# virtualenv, a plain .venv in the checkout, an already-activated venv, or
+# ${HELTEC_VENV}. See "Python environment" in README.md.
+# Empty argument: any virtualenv with a python will do here. The esptool and
+# meshtastic checks below report precisely which tool is missing.
+VENV_BIN="$(resolve_venv_bin '')" || die "$(venv_hint)"
 readonly VENV_BIN
 
 # Prepending is harmless when the venv is already active, and is what makes

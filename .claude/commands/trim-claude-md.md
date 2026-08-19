@@ -24,7 +24,7 @@ Assign every candidate passage to a destination **before** editing:
 | **Delete** | One-time setup notes for work already done; narrative of how something was discovered once the finding itself is stated; anything derivable from the code in front of you | Remove |
 | **Condense** | A finding that matters but is explained at three times the length it needs | Rewrite to a sentence or two, keeping the *fact* and the *consequence* |
 | **Move to README** | Orientation, procedure, or rationale a human arriving cold would want | Add to `README.md` first, then remove |
-| **Move to doc/** | Reference too long for README but too valuable to lose | New `doc/<subject>.md`, linked from README |
+| **Move to docs/** | Reference too long for README but too valuable to lose | New `docs/<subject>.md`, linked from README |
 | **Save to memory** | Cross-project lessons about how to work, not about this repo | Write the memory file first, then remove |
 
 **Never delete without assigning a destination.** Record the disposition in the
@@ -50,7 +50,7 @@ Prefer condensing prose around a finding over deleting the finding.
 
 ## Step 3 — Preserve displaced content first
 
-Write to README, `doc/`, or memory **before** removing anything from
+Write to README, `docs/`, or memory **before** removing anything from
 `CLAUDE.md`. If the process is interrupted between the two, the version that
 loses nothing is the one where the copy already exists.
 
@@ -78,7 +78,7 @@ diff <(grep -oE '^\| `/[a-z-]+' CLAUDE.md | tr -d '|` /' | sort) \
 ## Step 5 — Report and commit
 
 List every section touched and its disposition — deleted, condensed, moved to
-README, moved to `doc/`, or saved to memory — with before and after sizes.
+README, moved to `docs/`, or saved to memory — with before and after sizes.
 
 Commit on `main` with a `Docs:` prefix, staging only the files this command
 changed. No AI attribution.

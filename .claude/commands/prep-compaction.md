@@ -66,7 +66,7 @@ git grep -niE 'psk|password|wifi_ssid|BEGIN .*PRIVATE KEY' -- . | grep -v '<reda
 git status --short --untracked-files=all
 ```
 
-Confirm no coordinates, no credentials, and that `doc/*.local.md`,
+Confirm no coordinates, no credentials, and that `docs/*.local.md`,
 `.claude_artifacts/` and `scripts/local-*.sh` are still ignored.
 
 ## Step 6 — Optionally export the transcript
