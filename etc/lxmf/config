@@ -11,6 +11,9 @@
 [lxmf]
   display_name = FTG1
   announce_at_start = yes
+  # lxmd reads on_inbound from THIS file only. The -i command-line flag is
+  # silently overwritten by this section, so setting it there does nothing.
+  on_inbound = /home/jeffp/Workspace/JeffreyPeacock.com/Embedded/LoRa/Heltec/ESP32-LoRa-V3/etc/lxmf/on-inbound.sh
   delivery_transfer_max_accepted_size = 1
 
 [logging]

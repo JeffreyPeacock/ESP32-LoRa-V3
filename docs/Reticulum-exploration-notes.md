@@ -116,6 +116,23 @@ though nothing is listening on RF.
 storing and forwarding other people's mail; that is the interesting capability,
 but it is a commitment to make deliberately.
 
+## Delivery proven end to end
+
+A loopback LXMessage was sent to `<9c001c033d66827d06fefbbbf0737af6>` and
+arrived: sender got a delivery confirmation, `lxmd` wrote the message under
+`etc/lxmf/storage/messages/`, and `etc/lxmf/on-inbound.sh` fired.
+
+Two things learned doing it:
+
+- **`lxmd -i <path>` is silently ignored when a config file exists.** `lxmd.py`
+  sets `on_inbound` from `[lxmf] on_inbound` in the config, and falls back to
+  `None` otherwise — overwriting whatever the command line supplied. Put it in
+  the config file.
+- **The received message reported `signature NOT VALIDATED`.** That is correct
+  behaviour, not a fault: the test sender used a throwaway identity that was
+  never announced, so the receiver had no public key to verify against.
+  Encryption and delivery are independent of authorship verification here.
+
 ## Battery reading is wrong here too
 
 `rnstatus` reports a battery percentage and "discharging" on a board with no
