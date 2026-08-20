@@ -325,6 +325,10 @@ scripts/lib/            shared shell helpers
 docs/                    ticket Quick View, regenerated from the board
 docs/datasheets/         vendor PDFs for every chip on the board
 docs/mqtt-broker-vps.md  running and hardening a broker for the multi-site link
+docs/Reticulum-exploration-notes.md   RNode and Reticulum findings (#8)
+etc/reticulum/          Reticulum config for FTG1, and its backups
+etc/secrets/            device config exports and anything else local — gitignored
+etc/firmware/           vendor images kept for rollback — gitignored
 .claude_artifacts/       transcripts and local notes — gitignored in full
 ```
 

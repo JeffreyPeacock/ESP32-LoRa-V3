@@ -1,0 +1,20 @@
+[reticulum]
+  enable_transport = False
+  share_instance = Yes
+  shared_instance_port = 37428
+  instance_control_port = 37429
+  panic_on_interface_error = No
+
+[logging]
+  loglevel = 4
+
+[interfaces]
+  [[RNode LoRa Interface]]
+    type = RNodeInterface
+    interface_enabled = True
+    port = /dev/ttyUSB0
+    frequency = 915000000
+    bandwidth = 125000
+    txpower = 22
+    spreadingfactor = 8
+    codingrate = 5

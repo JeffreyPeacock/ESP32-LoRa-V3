@@ -1,0 +1,52 @@
+[reticulum]
+  # We are a leaf, not infrastructure. With transport disabled this instance
+  # will not relay other people's traffic, and -- the part that matters here --
+  # will not bridge internet traffic onto the LoRa interface.
+  enable_transport = False
+  share_instance = Yes
+  shared_instance_port = 37428
+  instance_control_port = 37429
+  panic_on_interface_error = No
+
+[logging]
+  loglevel = 4
+
+[interfaces]
+
+  # FTG1's radio. discoverable is deliberately off: announcing it would publish
+  # our interface, and optionally our position, to the public discovery system
+  # and onto community maps like rmap.world.
+  [[RNode LoRa Interface]]
+    type = RNodeInterface
+    interface_enabled = True
+    discoverable = No
+    port = /dev/ttyUSB0
+    frequency = 915000000
+    bandwidth = 125000
+    txpower = 22
+    spreadingfactor = 8
+    codingrate = 5
+
+  # Internet entry points into the wider Reticulum network. The project's own
+  # Amsterdam/Dublin testnet is decommissioned (no DNS as of 2026-08-19); these
+  # are community backbone nodes, verified reachable before being added.
+  [[RNS Backbone derps.me]]
+    type = TCPClientInterface
+    interface_enabled = True
+    discoverable = No
+    target_host = rns.derps.me
+    target_port = 34242
+
+  [[RNS Backbone washmesh]]
+    type = TCPClientInterface
+    interface_enabled = True
+    discoverable = No
+    target_host = reticulum.washmesh.net
+    target_port = 7242
+
+  [[RNS TCP jabato]]
+    type = TCPClientInterface
+    interface_enabled = True
+    discoverable = No
+    target_host = reticulum.jabato.space
+    target_port = 4242

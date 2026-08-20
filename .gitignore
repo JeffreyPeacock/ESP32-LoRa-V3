@@ -22,6 +22,10 @@ device-config.yaml
 etc/secrets/
 secrets/
 
+# Vendor firmware images kept locally so a rollback never depends on a
+# download working. Large binaries; not ours to redistribute.
+etc/firmware/
+
 # Claude Code: commands and shared settings are committed; per-user permission
 # grants are not.
 .claude/settings.local.json
