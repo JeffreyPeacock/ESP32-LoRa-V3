@@ -83,6 +83,39 @@ than flooding every packet and de-duplicating at each hop.
   longitude and height. Off is consistent with how position is handled on the
   Meshtastic side.
 
+## FTG1's identity and LXMF address
+
+| | |
+|---|---|
+| Identity hash | `<093df62a1a0b828fd38bf9d2013b4394>` |
+| LXMF address | `<9c001c033d66827d06fefbbbf0737af6>` |
+| Display name | `FTG1` |
+| Private key | `etc/secrets/ftg1.identity` — **gitignored, 64 bytes, no recovery if lost** |
+
+Generated with `rnid -g`, and `lxmd` runs on it from `etc/lxmf/config`.
+
+Unlike the Meshtastic node ID, **this is not derived from the MAC**. It is a
+keypair on disk. Lose `etc/secrets/ftg1.identity` and the address is gone
+permanently — there is no authority to re-issue it, which is the same property
+that makes the address self-authenticating.
+
+**`lxmd --identity <path>` does not do what it looks like.** That flag is for
+authenticating queries to a remote node. On first run `lxmd` created its own
+primary identity in the config directory and announced a different address; the
+fix is to place the intended key at `<config>/identity` before starting it, and
+to delete the ratchets belonging to the discarded identity.
+
+`etc/lxmf/identity` and `etc/lxmf/storage/` are gitignored — private key and
+live crypto state. Only `etc/lxmf/config` is tracked.
+
+Announcing put **450 bytes out over the LoRa interface** and roughly 660 bytes
+out each internet interface, so FTG1 now transmits on 915 MHz periodically even
+though nothing is listening on RF.
+
+**The propagation node stays off** (`enable_node = no`). Running one means
+storing and forwarding other people's mail; that is the interesting capability,
+but it is a commitment to make deliberately.
+
 ## Battery reading is wrong here too
 
 `rnstatus` reports a battery percentage and "discharging" on a board with no

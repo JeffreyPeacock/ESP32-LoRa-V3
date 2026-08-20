@@ -1,0 +1,17 @@
+# LXMF daemon for FTG1. Identity lives in etc/secrets/ftg1.identity and is
+# passed with --identity; it is not stored here.
+
+[propagation]
+  # A propagation node stores other people's messages for offline delivery.
+  # That is the capability Meshtastic lacks and the reason Reticulum is
+  # interesting here -- but running one is a commitment to carry other
+  # people's mail, so it stays off until that is a deliberate decision.
+  enable_node = no
+
+[lxmf]
+  display_name = FTG1
+  announce_at_start = yes
+  delivery_transfer_max_accepted_size = 1
+
+[logging]
+  loglevel = 4

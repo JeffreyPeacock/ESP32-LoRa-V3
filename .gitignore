@@ -44,3 +44,8 @@ scripts/local-*.sh
 
 # A contributor's plain virtualenv, if they use one instead of pyenv.
 .venv/
+
+# LXMF daemon state. etc/lxmf/identity is a private key and the ratchets are
+# live crypto state; only the config is worth tracking.
+etc/lxmf/identity
+etc/lxmf/storage/
