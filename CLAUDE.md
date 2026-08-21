@@ -436,7 +436,7 @@ All scripts must pass `shellcheck -x` with no output. Run it before finishing.
 ## The second radio lives in its own project
 
 A **SparkFun LoRa Gateway 1-Channel (ESP32)** turned up on `/dev/ttyUSB1` and is
-documented in `../../Sparkfun/ESP32-LoRa-1-Gateway`, not here.
+documented in `../../Sparkfun/ESP32-LoRa-1Ch-Gateway`, not here.
 
 **None of the hardware facts above apply to it.** It is an ESP32-D0WDQ6 with an
 RFM95W — an SX1276 — behind a CH340C. No 1.8 V TCXO, no DIO2 RF switch, and its
