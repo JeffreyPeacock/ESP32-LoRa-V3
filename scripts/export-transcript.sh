@@ -247,6 +247,12 @@ PATTERNS = [
     # Not a secret, but it names the operator's home network.
     ('wifi ssid (yaml)',
      r'(wifiSsid\s*:\s+)(?!\*)(\S+)'),
+    # Config dumps printed by third-party firmware. The ESP-1ch-Gateway sketch
+    # prints its stored WiFi credentials on every boot as ".SSID=" / ".PASS=".
+    ('firmware config dump (pass)',
+     r'(^\s*\.?PASS\s*=\s*)(?!\*)(\S+)'),
+    ('firmware config dump (ssid)',
+     r'(^\s*\.?SSID\s*=\s*)(?!\*)(\S+)'),
     ('wifi ssid (argument)',
      r'(--set\s+network\.wifi_ssid\s+)(?!\*)([\'"]?[^\'"\s]+[\'"]?)'),
 ]
@@ -254,7 +260,8 @@ PATTERNS = [
 masked = {}
 if MASK:
     for label, pat in PATTERNS:
-        body, n = re.subn(pat, lambda m: m.group(1) + '***', body)
+        # re.M so the ^-anchored firmware config-dump patterns match per line.
+        body, n = re.subn(pat, lambda m: m.group(1) + '***', body, flags=re.M)
         if n: masked[label] = n
     for s_ in EXTRA:
         n = body.count(s_)
@@ -266,7 +273,7 @@ if MASK:
 # not a prose false positive, because the patterns require a value to follow.
 residual = {}
 for label, pat in PATTERNS:
-    hits = re.findall(pat, body)
+    hits = re.findall(pat, body, flags=re.M)   # same flags as the masker above
     if hits: residual[label] = len(hits)
 
 open(DST,'w',encoding='utf-8').write(body)
