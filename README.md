@@ -163,15 +163,47 @@ which is an SX127x name — on this board it is **DIO1**. The header also record
 the two settings that differ from RadioLib's defaults and that this board will
 not transmit without: a **1.8 V TCXO** reference and **DIO2 as the RF switch**.
 
+## Radios
+
+Four boards are attached. Only the two Heltecs can run RNode; RNode firmware has
+no SAMD support at all.
+
+| Device | Board | MCU | Radio | MAC | State |
+|---|---|---|---|---|---|
+| `ttyUSB0` | Heltec V3 — **FTG1** | ESP32-S3 | SX1262 | `44:1B:F6:FB:8E:00` | RNode 1.86 + Reticulum |
+| `ttyUSB1` | Heltec V3 #2 | ESP32-S3 | SX1262 | `44:1B:F6:FA:AC:5C` | unconfigured |
+| `ttyACM0` | SparkFun Pro RF | SAMD21 | RFM95 / SX1276 | — | as shipped |
+| `ttyACM1` | SparkFun Pro RF | SAMD21 | RFM95 / SX1276 | — | as shipped |
+
+**Both Heltecs report CP2102 serial `0001`**, so `/dev/heltec-0001` and the
+`ttyUSBn` number identify nothing. Confirm which board you are talking to with
+`esptool --port <dev> chip-id` and check the MAC.
+
 ## FTG1 configuration
 
-Current state of the one board under our control. Values read from
-`meshtastic --info`; the table is maintained by hand as tickets land, so treat
-the device as authoritative if the two ever disagree.
+**FTG1 currently runs RNode, not Meshtastic.** The board holds one firmware at a
+time. The Meshtastic configuration below is preserved because it is what gets
+restored, not because it is loaded right now.
 
-This is the **normal operating configuration**: Bluetooth to a phone, LoRa to
-the local mesh, and no dependency on any network. MQTT and WiFi are switched on
-only for bridging experiments and switched back off afterwards.
+| | |
+|---|---|
+| Firmware | RNode 1.86, Reticulum 1.4.2 |
+| Reticulum identity | `<093df62a1a0b828fd38bf9d2013b4394>` |
+| LXMF address | `<9c001c033d66827d06fefbbbf0737af6>` |
+| LoRa | 915 MHz, BW 125 kHz, SF8, CR5, 22 dBm |
+| Interfaces | RNode + three internet backbones; transport and discovery off |
+| Set by | #8, #15 |
+
+Restore Meshtastic with
+`etc/firmware/rollback-heltec-v3/device-install.sh -p /dev/ttyUSB0 -f firmware-heltec-v3-2.7.26.54e0d8d.factory.bin`,
+then re-import from `etc/secrets/`. The node ID survives any reflash.
+
+### Meshtastic configuration, as last set (#1–#7)
+
+Read from `meshtastic --info` on 2026-08-19 and preserved in
+`etc/secrets/ftg1-2026.08.19.config.yaml`. This was the **normal operating
+configuration**: Bluetooth to a phone, LoRa to the local mesh, no network
+dependency.
 
 **Hardware**
 
@@ -189,7 +221,7 @@ only for bridging experiments and switched back off afterwards.
 
 | | | Set by |
 |---|---|---|
-| Stack | Meshtastic | #1 |
+| Stack | Meshtastic — **not currently loaded** | #1 |
 | Version | `2.7.26.54e0d8d` | #1 |
 | Target | `heltec-v3` | #1 |
 | Node ID | `!f6fb8e00` | derived from the MAC, not configurable |

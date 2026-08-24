@@ -387,6 +387,42 @@ The `/dev/heltec-*` symlink does **not** identify a specific board — Heltec sh
 these CP2102Ns with the factory serial `0001`, so every board produces
 `/dev/heltec-0001`. With more than one attached, use `/dev/serial/by-path/`.
 
+**This stopped being hypothetical on 2026-08-24**: there are now two Heltec V3
+boards, both reporting serial `0001`. Tell them apart by MAC, never by port
+number:
+
+| MAC | Node ID would be | Notes |
+|---|---|---|
+| `44:1B:F6:FB:8E:00` | `!f6fb8e00` | **FTG1**, the configured node |
+| `44:1B:F6:FA:AC:5C` | `!f6faac5c` | second board, unconfigured |
+
+**A `ttyUSBn` number is not an identity.** On 2026-08-23 `/dev/ttyUSB1` was a
+CP2102N with the unique serial `c44d2da5…`; the next day it was a Heltec with
+serial `0001`. Nothing announced the swap. Confirm the MAC with
+`esptool --port <dev> chip-id` before acting on any board, and treat a board
+that suddenly answers differently as a different board until the MAC says
+otherwise.
+
+## Four radios now, and only two can run RNode
+
+| Device | Board | MCU | Radio | RNode? |
+|---|---|---|---|---|
+| `ttyUSB0` | Heltec V3 (FTG1) | ESP32-S3 | SX1262 | yes — running it |
+| `ttyUSB1` | Heltec V3 #2 | ESP32-S3 | SX1262 | yes — not yet flashed |
+| `ttyACM0` | SparkFun Pro RF | **SAMD21** | RFM95 (SX1276) | **no** |
+| `ttyACM1` | SparkFun Pro RF | **SAMD21** | RFM95 (SX1276) | **no** |
+
+**RNode firmware has no SAMD support of any kind** — `rnodeconf` targets AVR,
+ESP32 and nRF52, and contains zero references to SAMD. The two Pro RF boards
+cannot be RNodes and no amount of configuration changes that. They are a matched
+pair for plain point-to-point LoRa with RadioLib, which does interoperate with
+an SX1262 as long as frequency, bandwidth, spreading factor, coding rate, sync
+word, preamble and CRC all match.
+
+The Pro RF boards use the SAMD21's **native USB**, so they appear as
+`/dev/ttyACM*` rather than `/dev/ttyUSB*`, and they disappear from `/dev`
+briefly when they reset. A vanished `ttyACM` is usually a reset, not a fault.
+
 ## Toolchain layout
 
 Three environments with distinct jobs. Do not merge them.
