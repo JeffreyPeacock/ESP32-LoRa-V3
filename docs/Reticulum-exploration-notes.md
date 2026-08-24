@@ -38,10 +38,64 @@ still transmitting a few hundred metres away, but they use Meshtastic's sync
 word at SF11/BW250 and its own framing. Same hardware filter that makes the
 PlatformIO diagnostic deaf.
 
-## Nobody is running Reticulum over RF near FTG1
+## Two nodes, and a message that crossed the air
+
+A second Heltec V3 (MAC `44:1B:F6:FA:AC:5C`, `/dev/ttyUSB1`) was flashed with
+RNode 1.86 on 2026-08-24 and an LXMF message was delivered from it to FTG1 over
+915 MHz.
+
+```
+from    : <3cb6d9b9ef87ad8ed5c0df892462b655>   (node B)
+to      : <9c001c033d66827d06fefbbbf0737af6>   (FTG1)
+title   : RF link test B -> A
+content : Sent from the second Heltec over 915 MHz LoRa.
+```
+
+**How the test was made honest.** Two independent Reticulum instances, one per
+radio. Instance A keeps its three internet backbones; instance B, configured in
+`etc/reticulum/config.node-b`, has **only its RNode interface**. B therefore has
+no path to anything except over the air, and it learned FTG1's address as *1 hop
+away on `RNodeInterface[RNode B]`*.
+
+The interface counters corroborate it rather than relying on that alone — each
+radio's transmit total matches the other's receive total exactly:
+
+| | A (`ttyUSB0`) | B (`ttyUSB1`) |
+|---|---|---|
+| TX | 458 B | 556 B |
+| RX | 556 B | 458 B |
+| Channel load | 2.36% | 2.08% |
+
+### `shared_instance_port` does nothing in RNS 1.x
+
+This cost real time and gives a **silently wrong result**, which is worse than
+an error.
+
+RNS shares an instance over an **AF_UNIX socket keyed by `instance_name`**. The
+`shared_instance_port` setting is ignored unless `shared_instance_type = tcp` is
+also set. Two instances with different ports but no distinct `instance_name`
+therefore collapse into one: the second logs
+
+```
+Started rnsd ... connected to another shared local instance,
+this is probably NOT what you want!
+```
+
+and then **both radios belong to the same stack**. Any "link test" run in that
+state passes without a single bit crossing the air. Set `instance_name` per
+instance, and check `rnstatus` names the right one — B reports
+`Shared Instance[rns/rnodeb]`.
+
+### Drop the power for bench work
+
+Both boards run at **2 dBm**, not 22. Inches apart, full power overloads the
+receiver front end. Even at minimum, B reports interference at −28 dBm.
+
+## Nobody else is running Reticulum over RF near FTG1
 
 Measured, not assumed: **0 bytes received, 0.0% channel load** over several hours
-at 915 MHz / BW 125 kHz / SF8 / CR5, noise floor −92 to −96 dBm.
+at 915 MHz / BW 125 kHz / SF8 / CR5, noise floor −92 to −96 dBm. That remains
+true of *strangers* — the only traffic on the air is between our own two nodes.
 
 Unlike Meshtastic's LongFast there is **no default channel everyone lands on**.
 Two RNodes must agree on frequency, bandwidth, spreading factor and coding rate

@@ -1,0 +1,29 @@
+[reticulum]
+  # Second Reticulum instance, owning the second Heltec on /dev/ttyUSB1.
+  # It has NO internet interface on purpose: anything reaching this instance
+  # must have crossed the air, which is the whole point of the test.
+  enable_transport = False
+  share_instance = Yes
+  # RNS 1.x shares instances over an AF_UNIX socket keyed by instance_name.
+  # shared_instance_port is ignored unless shared_instance_type = tcp, so
+  # without a distinct name this instance silently joins the default one
+  # instead of starting its own -- which is exactly what happened first try.
+  instance_name = rnodeb
+  shared_instance_port = 37430
+  instance_control_port = 37431
+  panic_on_interface_error = No
+
+[logging]
+  loglevel = 4
+
+[interfaces]
+  [[RNode B]]
+    type = RNodeInterface
+    interface_enabled = True
+    discoverable = No
+    port = /dev/ttyUSB1
+    frequency = 915000000
+    bandwidth = 125000
+    txpower = 2
+    spreadingfactor = 8
+    codingrate = 5
