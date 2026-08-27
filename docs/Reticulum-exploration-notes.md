@@ -66,6 +66,52 @@ radio's transmit total matches the other's receive total exactly:
 | RX | 556 B | 458 B |
 | Channel load | 2.36% | 2.08% |
 
+### A phone as the third node
+
+On 2026-08-26 an Android phone running **Sideband 2.0.1**, paired to the second
+Heltec over Bluetooth, sent `Hello, world!` to FTG1 over 915 MHz. Phone → BLE →
+RNode → LoRa → RNode → laptop, with **no internet anywhere in the chain** and no
+computer on the phone's end.
+
+That is the field configuration: the phone is the host, the RNode is the radio,
+and together they are a complete node with their own identity and LXMF address.
+
+**The Heltec V3 is BLE-only, not Bluetooth Classic.** The firmware sets
+`HAS_BLUETOOTH false` / `HAS_BLE true` for this board, selecting `BLESerial`
+rather than `BluetoothSerial`, because the **ESP32-S3 has no Classic radio at
+all**. Consequences: Android pairs and bonds it but offers no "connect" action —
+tapping it in Bluetooth settings correctly does nothing, since the app opens the
+GATT link, not the OS. Android 12+ also gates BLE behind the separate **Nearby
+devices** permission.
+
+Three steps in Sideband are each easy to miss, and each fails silently:
+
+1. **`Preferences → Connectivity → Connect via RNode`** is what brings the
+   interface up. `Hardware → RNode` only sets frequency, bandwidth, spreading
+   factor, coding rate and power. Configuring the hardware and never enabling
+   the interface produces a node that transmits *nothing* — not a weak signal,
+   not an undecodable one.
+2. **Restart the RNS service** after changing Connectivity. Sideband says so on
+   that screen and provides the button; the change does not take effect
+   otherwise.
+3. **The recipient's keys must be known before a message can be composed.** An
+   address is a hash of a public key, so the sender needs the key itself to
+   encrypt. It arrives in an announce, or is fetched with the app's request-keys
+   action. Until then the compose field stays locked.
+
+**Diagnosing from the radio beats guessing at the UI.** Whether a node is
+transmitting is answerable from the far end: watch the receiver's RX byte
+counter and its path table. Three failure modes are distinguishable there —
+nothing on the channel at all (interface not enabled), energy but no decode
+(parameter mismatch or front-end overload), or a decode with the address
+appearing at 1 hop (working).
+
+**Interference readings do not identify their source.** FTG1 showed −22 to
+−26 dBm interference that was assumed to be the phone; powering off an unrelated
+local LoRa network stopped it, and the phone turned out to be transmitting
+nothing at the time. Check what else is on the band before drawing conclusions
+from an interference figure.
+
 ### `shared_instance_port` does nothing in RNS 1.x
 
 This cost real time and gives a **silently wrong result**, which is worse than
