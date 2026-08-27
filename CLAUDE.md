@@ -320,6 +320,43 @@ Repeating is not a property of the radio. Our `CLIENT` node already relays for
 others; `ROUTER` mainly means well-sited infrastructure that rebroadcasts
 promptly.
 
+### Sync words in use here
+
+Read from each project's source, not assumed. On SX126x the sync word is a
+16-bit register pair; on SX127x it is one byte, and the two columns below are
+the same value expressed either way.
+
+| Stack | SX127x | SX126x | Note |
+|---|---|---|---|
+| **RNode / Reticulum** | `0x12` | `0x1424` | the conventional **private** value |
+| Our PlatformIO diagnostic | — | `0x1424` | `RADIOLIB_SX126X_SYNC_WORD_PRIVATE` |
+| Meshtastic | `0x2b` | `0x24B4` | `RadioLibInterface.h` |
+| LoRaWAN | `0x34` | `0x3444` | the **public** value |
+
+**RNode does not use a custom sync word** — it uses the ordinary private one
+that most non-LoRaWAN devices default to. And it cannot be changed: the setter
+ignores its argument and hardcodes the value, with a `TODO` in the source asking
+why.
+
+```c
+void sx126x::setSyncWord(uint16_t sw) {
+  // TODO: Why was this hardcoded instead of using the config value?
+  writeRegister(REG_SYNC_WORD_MSB_6X, 0x14);
+  writeRegister(REG_SYNC_WORD_LSB_6X, 0x24);
+}
+```
+
+Two consequences:
+
+- **Meshtastic and RNode cannot collide.** `0x24B4` differs from `0x1424` in
+  both bytes, so the separation is real rather than incidental.
+- **Our diagnostic firmware shares RNode's sync word.** Only the modulation
+  differs today — SF9/BW125/CR4:7 against RNode's SF8/BW125/CR5. A RadioLib
+  sketch matching both would be *heard* by an RNode, though nothing would decode
+  as a packet because the framing above the PHY is different. **A sync word is
+  not isolation.** It stops decoding; it does not stop the energy, and CSMA
+  still defers to it.
+
 ## Reaching a headless node on WiFi
 
 WiFi and BLE are mutually exclusive on ESP32, so a node using its own WiFi is
