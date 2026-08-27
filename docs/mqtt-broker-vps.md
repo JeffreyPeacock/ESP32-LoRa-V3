@@ -256,8 +256,15 @@ identical to one that is working until someone tests it.
 ## The alternative worth weighing
 
 A VPS is the straightforward answer, but it is not the only one. A VPN joining
-the three sites — WireGuard, or an existing ham/AREDN network — keeps the broker
-private and removes the public attack surface entirely, at the cost of every
-site needing VPN configuration. Given the downlink risk above, that is a real
-argument for it, and worth deciding deliberately in #10 rather than defaulting
-to a public host.
+the three sites — WireGuard, for instance — keeps the broker private and removes
+the public attack surface entirely, at the cost of every site needing VPN
+configuration. Given the downlink risk above, that is a real argument for it,
+and worth deciding deliberately in #10 rather than defaulting to a public host.
+
+**Do not treat ham/AREDN as an equivalent option.** AREDN operates under FCC
+Part 97, which prohibits messages encoded to obscure their meaning
+(97.113-a-4), and AREDN's own documentation advises against running software
+that encrypts. Everything above — TLS on 8883, `mqtt.encryption_enabled`,
+per-node credentials — is built on encrypted transport, and Reticulum has no
+plaintext mode at all. AREDN buys independence from commercial infrastructure
+and costs encryption; it cannot give both. See the discussion on #10.
