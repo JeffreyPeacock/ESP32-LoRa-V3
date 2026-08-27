@@ -50,6 +50,33 @@ wrong. `include/board_pins.h` is the authority; use it, not the variant.
   trusting any reading.
 - The OLED is on its own I2C bus (SDA 17 / SCL 18), not the header pins.
 
+### The two LEDs mean completely different things
+
+**Orange = charger, hardware. White = firmware, GPIO35.** Confusing them wastes
+time, because only one of them says anything about software.
+
+The **orange** LED is driven by the **TP4054** lithium charger's open-drain
+`CHRG` pin through a 330 Ω resistor. No GPIO is involved and the ESP32 cannot
+affect it. It lights while charging and **goes out when the cycle terminates** —
+so orange-then-dark over a few hours is a completed charge, not a fault. The
+schematic names the colour explicitly; the reference designator is probably
+`LED2` but the drawing extracts poorly to text, so trust the colour, not the
+number.
+
+**A steady LED is never the firmware.** RNode animates the white LED and nothing
+else: standby breathes, not-ready breathes faster, error flashes. Its only
+steady state is `led_indicate_console`, which is NeoPixel-only and the V3 has no
+NeoPixel — both RX and TX map to `pin_led_rx = 35`. So a constant light on this
+board is the charger talking.
+
+**The charger restarts on any VBUS interruption.** Observed 2026-08-27: the
+orange LED lit when an unrelated USB device was plugged into the same powered
+hub. The board is bus-powered and was three hubs deep sharing a rail with ten
+storage devices; a momentary dip drops it to battery, and when USB returns the
+TP4054 begins a fresh cycle to top up. The trigger was not conclusively
+identified — do not read a diagnosis into the LED beyond "a charge cycle is
+running".
+
 Verified on the bench: OLED answers at 0x3C, SX1262 initialises at 915 MHz,
 MAC `44:1B:F6:FB:8E:00`, ESP32-S3 rev v0.2, 8 MB flash, no PSRAM.
 
