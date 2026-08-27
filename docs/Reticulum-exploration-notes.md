@@ -147,6 +147,45 @@ Unlike Meshtastic's LongFast there is **no default channel everyone lands on**.
 Two RNodes must agree on frequency, bandwidth, spreading factor and coding rate
 in advance. The parameters above are a common convention, not a standard.
 
+## There is no default frequency, but there is a strong convention
+
+Measured 2026-08-27 from rmap.world's discovery feed (`/?json=1`): 618 nodes,
+**307 RNode LoRa interfaces publishing a frequency**. This is what operators
+actually run, not what a document recommends.
+
+**US 902–928 band — 110 nodes:**
+
+| Frequency | Nodes |
+|---|---:|
+| **914.875 MHz** | 50 |
+| **915.000 MHz** | 45 |
+| 925.875 MHz | 5 |
+| all others | 10 |
+
+The top two are **86% of US RNodes** and sit 125 kHz apart — one bandwidth, so
+effectively adjacent channels in the same corner of the band. Modulation
+converges just as hard: **BW 125 kHz** (86 of 110), **SF8** (54), **CR5** (96).
+
+Europe clusters at **868.825 MHz** (54 nodes) with a second group around
+869.4–869.6 MHz.
+
+**FTG1 runs 915.000 MHz / 125 kHz / SF8 / CR5 — the most common combination on
+the map.** That was luck; the parameters were chosen before this was checked.
+
+### What this corrects
+
+Earlier notes said Reticulum has no LongFast equivalent, so nobody would be met
+by accident. The first half stands — **nothing in the protocol negotiates these
+values and a mismatch is silent, not an error**. The second half was too strong:
+another RNode operator arriving in Flagstaff is more likely than not to be on
+914.875 or 915.000 at SF8/CR5, and we would hear them.
+
+**Consequence: do not move our link off 915.000 to dodge local interference.**
+That would leave the one frequency where a stranger might find us. Move the
+other equipment instead — it is ours and bound by no convention — or disable
+interference avoidance with `rnodeconf -X` so RNode stops deferring to energy it
+cannot decode. The protocol already ignores foreign LoRa; only CSMA yields to it.
+
 ## The public testnet is gone — find entry points from the live directories
 
 `amsterdam.connect.reticulum.network` and `dublin.connect.reticulum.network`
