@@ -396,6 +396,23 @@ number:
 | `44:1B:F6:FB:8E:00` | `!f6fb8e00` | **FTG1**, the configured node |
 | `44:1B:F6:FA:AC:5C` | `!f6faac5c` | second board, unconfigured |
 
+**Address the boards by physical USB socket.** `/dev/serial/by-path/` is the
+only stable handle here, and both Reticulum configs use it:
+
+| Board | Path |
+|---|---|
+| FTG1 | `pci-0000:00:14.0-usb-0:1.1:1.0-port0` |
+| Heltec #2 | `pci-0000:00:14.0-usb-0:5.1.3.3:1.0-port0` |
+
+**`/dev/serial/by-id/` is worse than useless for these.** Both Heltecs generate
+the identical id string, so udev creates **one** symlink and it silently points
+at whichever board won the race — observed pointing at #2 while FTG1 was the one
+in use. Never use by-id with more than one Heltec attached.
+
+Plugging in the other radios (two SparkFun Pro RF on `/dev/ttyACM*`, the
+1-channel gateway on a CH340) can renumber `ttyUSBn`. The pinned paths are
+immune to that; a bare `/dev/ttyUSB0` is not.
+
 **A `ttyUSBn` number is not an identity.** On 2026-08-23 `/dev/ttyUSB1` was a
 CP2102N with the unique serial `c44d2da5…`; the next day it was a Heltec with
 serial `0001`. Nothing announced the swap. Confirm the MAC with
