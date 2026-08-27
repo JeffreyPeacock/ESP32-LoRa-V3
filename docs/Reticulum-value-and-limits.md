@@ -64,9 +64,21 @@ forward nothing.
 **3. A non-RF bridge.** Any node with two interfaces joins two worlds. Ours has
 a radio and three internet links, so it reaches 300-odd destinations that no
 amount of LoRa could. The bridge does **not** have to be the public internet —
-a VPN, cellular, or a ham/AREDN network works identically, and AREDN is the
-option that would make a long link genuinely independent of commercial
-infrastructure.
+a VPN, cellular, or a ham/AREDN network carries IP just the same.
+
+**But AREDN is not a drop-in answer for Reticulum, and an earlier draft of this
+document wrongly implied it was.** AREDN operates under FCC Part 97, which
+prohibits "messages encoded for the purpose of obscuring their meaning"
+(97.113-a-4), and AREDN's own documentation advises against running software
+that encrypts. Reticulum encrypts everything and has no plaintext mode, so
+Reticulum-over-AREDN is legally doubtful in the US rather than merely
+unconventional. We have already seen the same rule bite in practice: the
+licensed operator `!8c36d408` (KJ7PJE) runs Meshtastic with `is_licensed: true`,
+which **disables encryption**, and his packets arrive in the clear.
+
+A VPN over commercial internet, or cellular, has no such constraint. AREDN
+remains interesting as an IP backbone for *unencrypted* traffic; it is not a way
+to run this stack free of that trade-off.
 
 **Flagstaff to San Jose is ~900 km. No number of LoRa hops closes that.** A
 backbone is required, and the only real decision is which transport carries it.
