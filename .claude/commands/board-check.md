@@ -8,6 +8,39 @@ Takes about a minute. Requires the board attached over USB-C with a **data** cab
 
 `$ARGUMENTS` may name a port (e.g. `/dev/ttyUSB0`); otherwise it is autodetected.
 
+## Step 0 — Work out which board you are talking to
+
+**Do this first, every time.** A `ttyUSBn` number is not an identity: on
+2026-08-23 `/dev/ttyUSB1` was one board and the next day it was a different one,
+with nothing announcing the swap. Time was spent diagnosing hardware that had
+already been unplugged.
+
+```bash
+for d in /dev/ttyUSB* /dev/ttyACM*; do
+  [ -e "$d" ] || continue
+  printf '%-14s %s\n' "$d" "$(udevadm info -q property -n "$d" |
+    grep -E '^ID_(VENDOR_ID|MODEL_ID|USB_DRIVER)=' | tr '\n' ' ')"
+done
+ls -l /dev/serial/by-path/
+```
+
+`10c4:ea60` / `cp210x` is a Heltec. `1a86:7523` / `ch341` is the SparkFun
+gateway. `/dev/ttyACM*` under `cdc_acm` is a SparkFun Pro RF, which is SAMD21
+and cannot run RNode.
+
+**That is not enough to tell the two Heltecs apart** — both report the factory
+serial `0001`, so `/dev/serial/by-id/` collapses them onto one symlink and will
+silently point at the wrong one. Confirm by MAC:
+
+| MAC | Board |
+|---|---|
+| `44:1B:F6:FB:8E:00` | FTG1 |
+| `44:1B:F6:FA:AC:5C` | Heltec #2 |
+
+**A port held by another host answers nothing.** `rnsd`, a phone over BLE, or a
+running `rnodeconf` will each make the board look dead — a silent non-response,
+not an error. Check `fuser /dev/ttyUSB*` before concluding anything is broken.
+
 ## Step 1 — Host and toolchain
 
 ```bash
@@ -29,7 +62,7 @@ Common failures and what they mean:
 
 Do not continue past a failure here — everything downstream will produce confusing results.
 
-## Step 2 — Identify the chip
+## Step 2 — Confirm the chip and MAC
 
 ```bash
 ./scripts/heltec-dev.sh chip-id

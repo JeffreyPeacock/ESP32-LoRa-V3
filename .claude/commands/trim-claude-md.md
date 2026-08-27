@@ -45,6 +45,18 @@ recoverable by reading the code:
 - **Board GraphQL IDs** — these are not derivable and there is no other copy
 - The **no-CI warning**, the **no-attribution rule**, and the **public-repo rule**
 - `hopsAway: 0` says nothing about line of sight on this terrain
+- The **sync word table** — two of its four rows are the same value, and the
+  conclusion that a sync word is not isolation
+- **Orange LED is the charger, white is firmware**, and a steady LED is never
+  software
+- **Both Heltecs report serial `0001`** — by-id collapses them; use by-path and
+  confirm by MAC
+
+**A corrected claim is worth more than a new one, so keep the correction
+visible.** Where this file records that something was previously wrong — the
+`ADC_CTRL` polarity, the node name, the README saying Meshtastic while RNode was
+loaded — do not tidy the correction away into a bare statement of fact. The next
+session needs to know it was got wrong once.
 
 Prefer condensing prose around a finding over deleting the finding.
 

@@ -34,7 +34,13 @@ transcript has captured a WiFi PSK and a Meshtastic channel URL, and a channel
 URL encodes **every channel's pre-shared key**.
 
 Patterns are always masked: channel URLs, WiFi PSKs however they were echoed,
-YAML `psk`/`wifiPsk` values, hex PSK arguments, and MQTT passwords.
+YAML `psk`/`wifiPsk` values, hex PSK arguments, MQTT passwords, the node's
+`privateKey` from `--export-config`, the WiFi SSID, and the `.SSID=` / `.PASS=`
+lines third-party firmware prints on boot.
+
+**If you add a pattern to the script, update this list.** They drifted once
+already — the doc still promised five patterns after the script had grown to
+eleven, which is how someone concludes a transcript is clean when it is not.
 
 **Project-specific literals belong in `.claude_artifacts/mask-secrets.txt`**, one
 per line. Prefer that over `--secret` on the command line, because a value typed

@@ -361,6 +361,7 @@ docs/Reticulum-exploration-notes.md   RNode and Reticulum findings (#8)
 docs/Reticulum-Overview.md            short primer on the stack
 docs/Reticulum-value-and-limits.md    what it is for, and what it will not do
 docs/aredn-as-a-transport.md          reference: AREDN, and why Part 97 rules it out here
+docs/config-tools.md                  GUI alternatives to the rnodeconf and meshtastic CLIs
 etc/reticulum/          Reticulum config for FTG1, and its backups
 etc/secrets/            device config exports and anything else local — gitignored
 etc/firmware/           vendor images kept for rollback — gitignored

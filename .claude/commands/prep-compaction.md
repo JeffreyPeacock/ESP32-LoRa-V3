@@ -41,11 +41,20 @@ The radio's live state is in `README.md` under FTG1 configuration. If the sessio
 changed region, channels, MQTT, WiFi, position or identity, the table is now
 lying. Include the ticket that made each change in the "Set by" column.
 
-The device is authoritative — read it rather than reconstructing from memory:
+The device is authoritative — read it rather than reconstructing from memory.
+**Ask the firmware that is actually loaded**, which is not always Meshtastic:
 
 ```bash
-meshtastic --port /dev/ttyUSB0 --info
+./scripts/heltec-dev.sh raw          # which firmware is on the board at all
+rnodeconf -i <port>                  # if RNode
+meshtastic --port <port> --info      # if Meshtastic
+rnstatus                             # Reticulum interfaces, if rnsd is running
 ```
+
+**Confirm which board you are addressing before quoting anything from it.** Two
+Heltecs are attached and both report CP2102 serial `0001`; `esptool --port <dev>
+chip-id` and the MAC are the only identity. The configs use
+`/dev/serial/by-path/` for the same reason.
 
 ## Step 4 — Regenerate what is generated
 
