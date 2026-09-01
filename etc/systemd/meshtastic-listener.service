@@ -1,0 +1,40 @@
+# Meshtastic listener for FTG1.
+#
+# A *user* unit, not a system one: the listener needs group dialout and writes
+# its ledger into the checkout, and running it as root would leave root-owned
+# files that break the next run from a normal shell.
+#
+#   mkdir -p ~/.config/systemd/user
+#   ln -sf "$PWD/etc/systemd/meshtastic-listener.service" ~/.config/systemd/user/
+#   systemctl --user daemon-reload
+#   systemctl --user enable --now meshtastic-listener
+#
+# To survive logout and reboot without an active session:
+#   sudo loginctl enable-linger "$USER"
+#
+# The radio serves one host at a time, so stop this before running
+# `meshtastic --info` or anything else that opens the port:
+#   systemctl --user stop meshtastic-listener
+
+[Unit]
+Description=Meshtastic listener for FTG1
+Documentation=file:%h/Workspace/JeffreyPeacock.com/Embedded/LoRa/Heltec/ESP32-LoRa-V3/README.md
+After=network.target
+
+[Service]
+Type=simple
+WorkingDirectory=%h/Workspace/JeffreyPeacock.com/Embedded/LoRa/Heltec/ESP32-LoRa-V3
+ExecStart=%h/Workspace/JeffreyPeacock.com/Embedded/LoRa/Heltec/ESP32-LoRa-V3/scripts/meshtastic-listener.sh run
+
+# The board disappears from /dev on reset and comes back a moment later.
+# Restart rather than treating that as a failure; the listener also reconnects
+# on its own while the process survives.
+Restart=always
+RestartSec=15
+
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=meshtastic-listener
+
+[Install]
+WantedBy=default.target

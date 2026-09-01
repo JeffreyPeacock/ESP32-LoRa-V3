@@ -135,6 +135,63 @@ Refuses to run as root, because PlatformIO run as root leaves root-owned files i
 port is autodetected when exactly one board is attached, and required when
 several are.
 
+### `scripts/meshtastic-listener.sh` — record and forward messages
+
+Holds the serial port open, writes every text message the radio sees to a JSON
+Lines ledger with its metadata, and forwards the ones addressed to this node by
+email and SMS.
+
+```
+run         hold the port open and forward messages (the default)
+self-test   send one test notification by email and SMS, then exit
+check       report the config, the port, and whether anything holds it
+tail        follow the ledger
+  -c FILE   config file (default etc/secrets/listener.conf)
+  -n        dry run: log what would be sent, send nothing
+  -v        verbose
+```
+
+Copy `etc/listener.conf.example` to `etc/secrets/listener.conf` and fill it in.
+The real file names a phone number and an email address, which is why it lives
+under `etc/secrets/` — gitignored as a whole directory.
+
+**Both notifications go through the local MTA.** Postfix on this host relays
+outbound, and an SMS to a carrier gateway is just a short email to
+`<number>@<gateway>`, so there is no second set of credentials. Google Fi's
+gateway is `<10 digits>@msg.fi.google.com`.
+
+Four behaviours are deliberate and worth knowing:
+
+- **Everything seen is recorded, forwarded or not**, with the reason in the
+  `decision` field. A listener that silently drops what it chose not to forward
+  cannot be debugged after the fact.
+- **Packet ids are deduplicated.** A packet arrives once per neighbour that
+  rebroadcasts it; without this, each hop would send its own email.
+- **SMS has an hourly ceiling** (`max_per_hour`, default 20). A chatty channel
+  or a rebroadcast loop should not be able to run up a bill.
+- **A carrier SMS gateway drops messages silently** and gives no delivery
+  receipt. If a message has to arrive, this is the wrong transport.
+
+Run it as a service with `etc/systemd/meshtastic-listener.service`, a **user**
+unit — the listener needs group `dialout` and writes into the checkout, so
+running it as root would leave root-owned files behind:
+
+```bash
+mkdir -p ~/.config/systemd/user
+ln -sf "$PWD/etc/systemd/meshtastic-listener.service" ~/.config/systemd/user/
+systemctl --user daemon-reload
+systemctl --user enable --now meshtastic-listener
+sudo loginctl enable-linger "$USER"     # survive logout and reboot
+```
+
+**The radio serves one host at a time.** While the listener runs, `meshtastic
+--info` and anything else that opens the port will fail. Stop it first:
+`systemctl --user stop meshtastic-listener`.
+
+`tests/test_listener.py` exercises the handling path with synthetic packets.
+The mesh here carries almost no text traffic — a four-minute live capture
+recorded none — so waiting for a real message is not a usable test.
+
 ## Firmware
 
 `src/main.cpp` is a bring-up diagnostic. It transmits nothing. It reports the
@@ -381,6 +438,10 @@ include/board_pins.h    pin map and the settings the variant header gets wrong
 src/main.cpp            bring-up diagnostic firmware
 scripts/                install, host setup, build and flash
 scripts/lib/            shared shell helpers
+tests/                  listener tests, no radio required
+etc/listener.conf.example  template for etc/secrets/listener.conf
+etc/systemd/            user unit for the listener
+etc/rnode/              RNode parameters and how to restore them
 .claude/commands/       slash commands for issue and board workflow
 docs/                    ticket Quick View, regenerated from the board
 docs/datasheets/         vendor PDFs for every chip on the board
