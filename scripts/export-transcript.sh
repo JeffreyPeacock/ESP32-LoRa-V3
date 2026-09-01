@@ -51,7 +51,9 @@ masked. Defaults to the most recently modified session.
   -h, --help          this message
 
 Always masked: Meshtastic channel URLs (they encode every channel PSK), WiFi
-PSKs, YAML psk/password/wifiPsk values, and hex PSK arguments.
+PSKs and SSIDs, YAML psk/wifiPsk values, hex PSK arguments, MQTT passwords, the
+node's privateKey from --export-config, and the .SSID=/.PASS= lines some
+third-party firmware prints on boot. Keep this list in step with PATTERNS.
 USAGE
 }
 
