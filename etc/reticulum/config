@@ -23,7 +23,7 @@
     # Pinned to the physical USB socket, not /dev/ttyUSBn. Numbering shifts
     # when other radios are plugged in, and by-id is useless here because
     # both Heltecs report the factory serial 0001 and collide on one symlink.
-    port = /dev/serial/by-path/pci-0000:00:14.0-usb-0:1.1:1.0-port0
+    port = /dev/serial/by-path/pci-0000:00:14.0-usb-0:3:1.0-port0
     frequency = 915000000
     bandwidth = 125000
     txpower = 2   # bench test: boards are inches apart
