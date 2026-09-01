@@ -263,3 +263,22 @@ and worth deciding deliberately in #10 rather than defaulting to a public host.
 
 A ham/AREDN backbone is sometimes suggested for this role. It is not
 equivalent — see `aredn-as-a-transport.md`.
+
+## Broker gotchas that cost real time
+
+Moved here from `CLAUDE.md`. Each of these produced a silent or misleading
+failure rather than a clear error.
+
+- **The public broker will not do JSON downlink.** It restricts it, which is the
+  whole reason a private broker exists.
+- **amqtt is MQTT 3.1.1 only; the Meshtastic phone app speaks MQTT 5.0.** The
+  broker answers `Unsupported protocol version` and the app reports
+  `UNSUPPORTED_PROTOCOL_VERSION`. Use **mosquitto** — 2.0.18 handles both.
+- **amqtt's `allow-anonymous: true` still rejects a client that supplies a
+  username.** It permits clients sending *no* credentials. The node was sending
+  `meshdev`/`large4cats` inherited from the public broker and got
+  `Not authorized` — with no session established, and therefore nothing in the
+  broker log to explain it.
+- **mosquitto 2.x defaults to localhost-only and denies anonymous.** It needs
+  `listener 1883 0.0.0.0` and `allow_anonymous true` in
+  `/etc/mosquitto/conf.d/`.

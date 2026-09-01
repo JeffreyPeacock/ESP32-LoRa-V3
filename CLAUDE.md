@@ -128,98 +128,39 @@ assumption that no position was being sent.
 
 ## There is an active mesh in range of FTG1 (#3)
 
-Surveyed 2026-08-15 with the stock LongFast channel and default key. **FTG1 is
-not isolated.** This changes planning: real RF peers exist to test against, so
-link behaviour no longer has to wait on SJC.
+**FTG1 is not isolated.** 108 nodes in the ledger, ~7 within 15 mi, typical SNR
+−5 to −6 dB. Real RF peers exist to test against, so link behaviour never had to
+wait on SJC. Detail — peer table, traceroutes, terrain maths, the node clock —
+is in `docs/meshtastic-rf-survey.md`.
 
-- **14 nodes** entered the NodeDB within ~35 minutes of setting the region.
-- **25 packets from 11 distinct senders** in a single 5-minute capture.
-- Typical signal **SNR −5 to −6 dB, RSSI ≈ −97 dBm**; the best peer sits at
-  **+0.75 dB**.
-- Hop spread: 1 node at 0 hops, 2 at 1, 5 at 2, 3 at 3.
+Three conclusions belong here because they generalise:
 
-Useful peers, by node ID — these are stable and worth reusing as test targets:
+- **The path off the Flagstaff bowl is two routers, not one.** `Eldn`
+  (`!085e15cb`) does not see Prescott; it spans 103.7 km SW to `!1fa06b14`,
+  which does. An earlier session attributed the whole southwest reach to one
+  node and was wrong.
+- **`hopsAway: 0` says nothing about line of sight on this terrain.** The Eldn
+  link is 0-hop at ~0 dB SNR through a summit standing **384 m above the line of
+  sight, twenty times the first Fresnel radius**. Do not infer geometry from hop
+  counts, or a path from elevation.
+- **Routing is asymmetric**, which is normal — remember it when a one-way test
+  looks like a failure.
 
-| Node | Hops | Note |
-|---|---|---|
-| `!efa18420` | 0 | Direct neighbour. Busiest sender. |
-| `!fe716141` (`MRC`) | 0 | Direct, SNR −11 dB |
-| `!9c594d28` (`FLG1`) | 1 | Heltec Mesh Pocket, ~1.4 km |
-| `!085e15cb` (`Eldn`) | 0 | Elden-Rptr-1-Mesh — the relay everything leaves town through |
-| `!1fa06b14` (`tr`) | 1 | ROUTER 100 km WSW; the next hop after Eldn toward Prescott |
-
-### The path off the Flagstaff bowl is two routers, not one
-
-Traceroute to a Prescott-area node:
-
-```
-towards: FTG1 --> !085e15cb (1.0dB) --> !1fa06b14 (-5.75dB) --> !b03b38dc (4.5dB)
-back:    !b03b38dc --> !1fa06b14 (-2.75dB) --> !085e15cb (-12.25dB) --> FTG1
-```
-
-`Eldn` does not see Prescott. It spans **103.7 km SW to `!1fa06b14`**, which serves
-the Prescott area. Do not attribute the whole southwest reach to one node.
-
-### The link to Eldn is diffraction, not line of sight
-
-Eldn sits on the **north** side of Mt. Elden at 2705 m; FTG1 is on the south side
-at 2103 m. The summit (2835 m) lies 58% along the 4.64 km path and stands **384 m
-above the line of sight — twenty times the first Fresnel radius**. Deeply
-obstructed, and yet it is a reliable 0-hop link at ~0 dB SNR.
-
-**On this terrain, `hopsAway: 0` says nothing about line of sight.** A 915 MHz
-LoRa link with SF11 has enough budget to diffract over a sharp ridge. Do not
-infer geometry from hop counts, and do not infer a path from elevation alone.
-
-Traceroute shows **asymmetric routing**, which is normal and worth remembering
-when a one-way test looks like a failure:
-
-```
-towards:  !f6fb8e00 --> efa18420 (-15.5dB)
-back:     efa18420 --> 085e15cb (-3.5dB) --> !f6fb8e00 (-1.0dB)
-```
-
-**Do not commit other operators' positions.** Several nodes broadcast lat/lon.
-Node IDs are already public on the mesh and on MQTT maps; coordinates are
-someone else's location and stay out of this repository.
-
-### The node clock, and why timestamps lie until you set it
-
-FTG1 has no GPS and no battery-backed RTC. With no time source it seeds its clock
-from the **firmware build epoch**, so `--nodes` renders live traffic as "1 month
-ago". Our own node reads the same way, which is the giveaway.
-
-Fix it directly:
-
-```bash
-meshtastic --set-time            # uses the host clock; verified skew 0.00 h
-```
-
-**It does not survive a power cycle** — there is no RTC to hold it, so the node
-re-seeds from the build epoch on every boot. Two things set it automatically, so
-this is mostly a bench-only chore: the phone app sets the time when it connects
-over BLE, and mesh peers share time with each other. Set it by hand when working
-over serial with no phone attached, and re-set it after any reboot.
-
-Until it is set, trust relative ordering rather than dates, and use a live
-capture when recency matters.
+**Do not commit other operators' positions.** Node IDs are already public on the
+mesh and on MQTT maps; coordinates are someone else's location.
 
 ### Peer positions are not committed
 
-Many peers broadcast lat/lon. Those are other operators' locations. They are
-kept in `docs/peers.local.md`, which `.gitignore` excludes via `docs/*.local.*` —
-useful for making contact locally, not ours to publish. Node IDs are fine to
-record; coordinates are not.
-
-**The NodeDB ages entries out, so a scan is not a record.** `peers-report.sh`
-accumulates everything ever seen into `docs/peers.local.json` and merges it back
-on each run; nodes the radio has forgotten appear under "Heard before, no longer
-in the NodeDB". The ledger carries the same coordinates as the report and the
-script refuses to run unless **both** are gitignored.
+They are kept in `docs/peers.local.md`, which `.gitignore` excludes via
+`docs/*.local.*`. **The NodeDB ages entries out, so a scan is not a record** —
+`peers-report.sh` accumulates everything ever seen into `docs/peers.local.json`
+and merges it back each run, listing forgotten nodes separately. The ledger
+carries the same coordinates as the report and the script refuses to run unless
+**both** are gitignored.
 
 **Local secrets live in `etc/secrets/`**, ignored as a whole directory rather
 than by file pattern. Device config exports go there: they carry channel PSKs,
-the WiFi PSK, and `security.privateKey`, which is the node's PKI identity.
+the WiFi PSK, and `security.privateKey`, the node's PKI identity.
 
 ## Normal operating mode is BLE, no network
 
@@ -283,19 +224,9 @@ Keep `downlink_enabled` **off** on the primary channel. Downlink there would
 rebroadcast public-internet traffic onto the shared local mesh. It belongs only
 on the dedicated `mqtt` channel.
 
-### Broker gotchas that cost real time
-
-- **The public broker will not do this.** It restricts JSON downlink, hence a
-  private broker.
-- **amqtt is MQTT 3.1.1 only; the Meshtastic phone app speaks MQTT 5.0.** The
-  broker answers `Unsupported protocol version` and the app reports
-  `UNSUPPORTED_PROTOCOL_VERSION`. Use **mosquitto** (2.0.18 handles both).
-- **amqtt's `allow-anonymous: true` still rejects a client that supplies a
-  username.** It permits clients sending *no* credentials. The node was sending
-  `meshdev`/`large4cats` inherited from the public broker and got
-  `Not authorized`, with no session and therefore nothing in the broker log.
-- **mosquitto 2.x defaults to localhost-only and denies anonymous.** It needs
-  `listener 1883 0.0.0.0` and `allow_anonymous true` in `/etc/mosquitto/conf.d/`.
+Broker gotchas that cost real time — amqtt's protocol version and its
+anonymous-auth trap, mosquitto's localhost default — are in
+`docs/mqtt-broker-vps.md`.
 
 ## The diagnostic firmware is deaf to the mesh
 

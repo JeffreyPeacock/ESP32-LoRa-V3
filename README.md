@@ -390,6 +390,7 @@ docs/Reticulum-Overview.md            short primer on the stack
 docs/Reticulum-value-and-limits.md    what it is for, and what it will not do
 docs/aredn-as-a-transport.md          reference: AREDN, and why Part 97 rules it out here
 docs/config-tools.md                  GUI alternatives to the rnodeconf and meshtastic CLIs
+docs/meshtastic-rf-survey.md          what was measured on the air around FTG1 (#3)
 etc/reticulum/          Reticulum config for FTG1, and its backups
 etc/secrets/            device config exports and anything else local — gitignored
 etc/firmware/           vendor images kept for rollback — gitignored
