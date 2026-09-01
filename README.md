@@ -165,19 +165,45 @@ not transmit without: a **1.8 V TCXO** reference and **DIO2 as the RF switch**.
 
 ## Radios
 
-Four boards are attached. Only the two Heltecs can run RNode; RNode firmware has
-no SAMD support at all.
+Four boards exist; not all are attached at once. Only the two Heltecs can run
+RNode — RNode firmware has no SAMD support at all.
 
-| Device | Board | MCU | Radio | MAC | State |
-|---|---|---|---|---|---|
-| `ttyUSB0` | Heltec V3 — **FTG1** | ESP32-S3 | SX1262 | `44:1B:F6:FB:8E:00` | RNode 1.86 + Reticulum |
-| `ttyUSB1` | Heltec V3 #2 | ESP32-S3 | SX1262 | `44:1B:F6:FA:AC:5C` | unconfigured |
-| `ttyACM0` | SparkFun Pro RF | SAMD21 | RFM95 / SX1276 | — | as shipped |
-| `ttyACM1` | SparkFun Pro RF | SAMD21 | RFM95 / SX1276 | — | as shipped |
+| Board | MCU | Radio | MAC | Role |
+|---|---|---|---|---|
+| Heltec V3 — **FTG1** | ESP32-S3 | SX1262 | `44:1B:F6:FB:8E:00` | fixed node, RNode 1.86 |
+| Heltec V3 **#2** | ESP32-S3 | SX1262 | `44:1B:F6:FA:AC:5C` | portable node, RNode 1.86 — hosted by a phone over BLE, battery powered |
+| SparkFun Pro RF ×2 | SAMD21 | RFM95 / SX1276 | — | point-to-point pair, separate work |
 
-**Both Heltecs report CP2102 serial `0001`**, so `/dev/heltec-0001` and the
-`ttyUSBn` number identify nothing. Confirm which board you are talking to with
-`esptool --port <dev> chip-id` and check the MAC.
+**Do not identify a board by its `ttyUSBn` number.** Both Heltecs report the
+CP2102 factory serial `0001`, so `/dev/heltec-0001` and `/dev/serial/by-id/`
+collapse them onto one name and will silently resolve to the wrong one. Confirm
+with `esptool --port <dev> chip-id` and check the MAC. The Reticulum configs
+address the boards by `/dev/serial/by-path/`, which names the physical socket.
+
+Heltec #2 needs USB only for power and flashing; the phone is its host.
+
+### What is on the band here
+
+915 MHz ISM, and more crowded than it looks:
+
+| Frequency | Used by | Notes |
+|---|---|---|
+| 902.3–914.9 MHz | LoRaWAN US915 uplink | 125/500 kHz channels |
+| 906.875 MHz | Meshtastic LongFast US | SF11/BW250 |
+| **915.000 MHz** | **our RNodes** | BW 125 kHz, SF8, CR5 |
+| 914.875 / 915.000 MHz | 86% of US RNodes generally | measured from the discovery network |
+| 920.000 MHz | the Pro RF pair | BW 125 kHz, SF7, CR5, sync `0x4A` |
+| 923.3–927.5 MHz | LoRaWAN US915 downlink | |
+
+**The separation was measured, not assumed.** With the Pro RF pair transmitting
+at 920.0, FTG1 reported interference at **−74 dBm with 0.0% channel load**, and
+announced successfully — against **−22 to −26 dBm** from unrelated LoRa
+equipment sharing our channel earlier. Five megahertz at 125 kHz bandwidth is
+forty channel widths, and it shows.
+
+Note the consequence recorded in `docs/Reticulum-exploration-notes.md`: **do not
+move our link off 915.000** to dodge local interference. It is the frequency
+another RNode operator would most likely arrive on.
 
 ## FTG1 configuration
 
@@ -187,11 +213,13 @@ restored, not because it is loaded right now.
 
 | | |
 |---|---|
-| Firmware | RNode 1.86, Reticulum 1.4.2 |
+| Firmware | RNode 1.86 (verified on the board 2026-08-27) |
+| Reticulum | 1.4.2 — **`rnsd` is not currently running**; start it to put FTG1 back on the network |
 | Reticulum identity | `<093df62a1a0b828fd38bf9d2013b4394>` |
 | LXMF address | `<9c001c033d66827d06fefbbbf0737af6>` |
-| LoRa | 915 MHz, BW 125 kHz, SF8, CR5, 22 dBm |
+| LoRa | 915.000 MHz, BW 125 kHz, SF8, CR5 — **2 dBm**, a bench setting; raise to 17–22 before deploying |
 | Interfaces | RNode + three internet backbones; transport and discovery off |
+| Serial path | `/dev/serial/by-path/pci-0000:00:14.0-usb-0:1.1:1.0-port0` |
 | Set by | #8, #15 |
 
 Restore Meshtastic with
