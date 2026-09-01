@@ -1,0 +1,59 @@
+# Meshtastic listener configuration.
+#
+# Copy to etc/secrets/listener.conf and fill in. The real file carries a phone
+# number and an email address, so it belongs under etc/secrets/, which is
+# gitignored as a whole directory. This example is tracked and must stay free
+# of real addresses.
+
+[listen]
+# The radio. Use a /dev/serial/by-path/ name, not /dev/ttyUSBn: numbering
+# shifts when other radios are plugged in. A by-path name is the USB *socket*,
+# so re-read it with ./scripts/heltec-dev.sh ports after moving a board.
+port = /dev/serial/by-path/pci-0000:00:14.0-usb-0:3:1.0-port0
+
+# true  -- forward only messages addressed to this node (direct messages)
+# false -- also forward broadcasts, subject to the channel allowlist below
+dm_only = true
+
+# Only consulted when dm_only = false. Empty means every channel. Names are
+# the channel names as configured on the radio; channel 0 is "primary".
+channels =
+
+# Every message the listener sees is appended here as one JSON object per
+# line, whether or not it was forwarded, with the decision recorded.
+ledger = etc/secrets/received.jsonl
+
+# How long to wait before reopening the port after the radio goes away.
+reconnect_secs = 15
+
+[mail]
+# Both email and SMS go through the local MTA. Postfix on this host relays
+# outbound through a smarthost, so nothing else needs configuring.
+sendmail = /usr/sbin/sendmail
+
+[email]
+enabled = true
+to = you@example.com
+from = ftg1@localhost
+subject_prefix = [FTG1]
+
+[sms]
+# A carrier email-to-SMS gateway. Google Fi's is <10 digits>@msg.fi.google.com.
+# Gateways drop messages silently and give no delivery receipt -- if a message
+# has to arrive, this is the wrong transport.
+enabled = true
+to = 5555550123@msg.fi.google.com
+from = ftg1@localhost
+
+# Left empty on purpose: several gateways prepend the subject to the message
+# body, which spends characters that are already scarce.
+subject =
+
+# Truncation point for the message text. The sender and SNR are appended
+# after this, so the delivered message is slightly longer.
+max_chars = 140
+
+# A ceiling, so a chatty channel or a rebroadcast loop cannot run up a bill or
+# get the gateway to rate-limit us. Messages above it are recorded in the
+# ledger and logged, but not sent.
+max_per_hour = 20

@@ -49,3 +49,7 @@ scripts/local-*.sh
 # live crypto state; only the config is worth tracking.
 etc/lxmf/identity
 etc/lxmf/storage/
+
+# Python bytecode from scripts/, never committed.
+__pycache__/
+*.pyc
