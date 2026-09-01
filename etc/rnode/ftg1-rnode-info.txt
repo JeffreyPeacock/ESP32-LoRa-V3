@@ -1,0 +1,19 @@
+[12:56:56] Opening serial port /dev/serial/by-path/pci-0000:00:14.0-usb-0:3:1.0-port0...
+[12:57:00] Device connected
+[12:57:00] Current firmware version: 1.86
+[12:57:00] Reading EEPROM...
+[12:57:00] EEPROM checksum correct
+[12:57:00] Device signature validated
+[12:57:00] 
+[12:57:00] Device info:
+[12:57:00] 	Product            : Heltec LoRa32 v3 850 - 950 MHz (c1:ca:3a)
+[12:57:00] 	Device signature   : Validated - Local signature
+[12:57:00] 	Firmware version   : 1.86
+[12:57:00] 	Hardware revision  : 1
+[12:57:00] 	Serial number      : 00:00:00:01
+[12:57:00] 	Modem chip         : SX1262
+[12:57:00] 	Frequency range    : 850.0 MHz - 950.0 MHz
+[12:57:00] 	Max TX power       : 22 dBm
+[12:57:00] 	Manufactured       : 2026-08-19 13:25:38
+[12:57:00] 	Device mode        : Normal (host-controlled)
+

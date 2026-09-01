@@ -246,6 +246,21 @@ PATTERNS = [
     # nothing here matched it.
     ('node private key',
      r'(privateKey\s*:\s*(?:base64:)?)(?!\*)([A-Za-z0-9+/=]{16,})'),
+    # The CLI writes the same key in snake_case when applying a config:
+    #   "Set security.private_key to base64:...".  The camelCase pattern above
+    #   does not match that, and it leaked on 2026-09-01 because of it.
+    ('node private key (cli)',
+     r'((?:private|public)_key\s+to\s+(?:base64:)?)(?!\*)([A-Za-z0-9+/=]{16,})'),
+    # Our own fixed position. CLAUDE.md keeps these coordinates out of the
+    # repository deliberately; a transcript is no different. Three spellings:
+    # the YAML export uses lat/lon, --info uses latitudeI/longitudeI, and
+    # --configure narrates "Fixing latitude at ... degrees".
+    ('fixed position (yaml)',
+     r'^(\s*(?:lat|lon|alt)\s*:\s*)(?!\*)(-?\d+(?:\.\d+)?)'),
+    ('fixed position (json)',
+     r'("(?:latitudeI|longitudeI|latitude|longitude|altitude)"\s*:\s*)(?!\*)(-?[\d.]+)'),
+    ('fixed position (cli)',
+     r'(Fixing (?:latitude|longitude|altitude) at\s+)(?!\*)(-?[\d.]+)'),
     # Not a secret, but it names the operator's home network.
     ('wifi ssid (yaml)',
      r'(wifiSsid\s*:\s+)(?!\*)(\S+)'),
