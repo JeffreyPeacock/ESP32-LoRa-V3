@@ -392,12 +392,20 @@ number:
 | `44:1B:F6:FA:AC:5C` | `!f6faac5c` | second board, unconfigured |
 
 **Address the boards by physical USB socket.** `/dev/serial/by-path/` is the
-only stable handle here, and both Reticulum configs use it:
+best handle here, and both Reticulum configs use it:
 
-| Board | Path |
-|---|---|
-| FTG1 | `pci-0000:00:14.0-usb-0:1.1:1.0-port0` |
-| Heltec #2 | `pci-0000:00:14.0-usb-0:5.1.3.3:1.0-port0` |
+| Board | Path | Last confirmed |
+|---|---|---|
+| FTG1 | `pci-0000:00:14.0-usb-0:3:1.0-port0` | 2026-09-01, by MAC |
+| Heltec #2 | `pci-0000:00:14.0-usb-0:5.1.3.3:1.0-port0` | 2026-08-28 |
+
+**A by-path name is the socket, not the board, so moving a board breaks it.**
+FTG1 was on `pci-0000:00:14.0-usb-0:1.1:1.0-port0` until 2026-09-01, when it was
+found on `usb-0:3` instead — plugged straight into the machine rather than
+through the hub chain. `etc/reticulum/config` still named the old path, so
+`rnsd` would have failed to open the radio. Re-confirm the path with
+`./scripts/heltec-dev.sh ports` and the MAC with `chip-id` after any replug; the
+MAC is the only thing that identifies a board.
 
 **`/dev/serial/by-id/` is worse than useless for these.** Both Heltecs generate
 the identical id string, so udev creates **one** symlink and it silently points

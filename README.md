@@ -219,7 +219,7 @@ restored, not because it is loaded right now.
 | LXMF address | `<9c001c033d66827d06fefbbbf0737af6>` |
 | LoRa | 915.000 MHz, BW 125 kHz, SF8, CR5 — **2 dBm**, a bench setting; raise to 17–22 before deploying |
 | Interfaces | RNode + three internet backbones; transport and discovery off |
-| Serial path | `/dev/serial/by-path/pci-0000:00:14.0-usb-0:1.1:1.0-port0` |
+| Serial path | `/dev/serial/by-path/pci-0000:00:14.0-usb-0:3:1.0-port0` — re-confirmed by MAC 2026-09-01 |
 | Set by | #8, #15 |
 
 Restore Meshtastic with
@@ -389,7 +389,7 @@ docs/Reticulum-exploration-notes.md   RNode and Reticulum findings (#8)
 docs/Reticulum-Overview.md            short primer on the stack
 docs/Reticulum-value-and-limits.md    what it is for, and what it will not do
 docs/aredn-as-a-transport.md          reference: AREDN, and why Part 97 rules it out here
-docs/config-tools.md                  GUI alternatives to the rnodeconf and meshtastic CLIs
+docs/config-tools.md                  GUI alternatives to the CLIs, and how to install each
 docs/meshtastic-rf-survey.md          what was measured on the air around FTG1 (#3)
 etc/reticulum/          Reticulum config for FTG1, and its backups
 etc/secrets/            device config exports and anything else local — gitignored
