@@ -179,8 +179,10 @@ one with several addressees, so a single bad address cannot suppress the rest.
 
 **Both notifications go through the local MTA.** Postfix on this host relays
 outbound, and an SMS to a carrier gateway is just a short email to
-`<number>@<gateway>`, so there is no second set of credentials. Google Fi's
-gateway is `<10 digits>@msg.fi.google.com`.
+`<number>@<gateway>`, so there is no second set of credentials. **Google Fi's
+gateway is `<10 digits>@msg.fi.google.com`, confirmed delivering to a handset
+on 2026-09-02** — it was an assumption until then, and the kind that fails
+silently.
 
 ### What the message looks like, and what is not ours to decide
 
@@ -356,7 +358,25 @@ first; `etc/rnode/RESTORE.md` has everything needed to put it back.
 | Serial path | `…usb-0:3:1.0-port0` | `…usb-0:5.3.3.3:1.0-port0` |
 
 Both carry the same three channels: the default LongFast primary, `mqtt`, and
-**`ftg-priv`** with a generated key, which is the one they message each other on.
+**`ftg-priv`** with a generated key.
+
+**The whole path is verified on hardware**, 2026-09-02: a message typed on the
+phone reached a handset as an SMS, through
+
+> phone → BLE → FTG2 → 915 MHz LoRa → FTG1 → USB → listener → relay → email
+> and SMS
+
+about two seconds end to end, at SNR 5.75 / RSSI −7 over 0 hops. The ledger row
+records `direct: true`, `pki_encrypted: true`, `email_sent: true`,
+`sms_sent: true`.
+
+**A direct message is addressed to the node, not posted to a channel.** In the
+app the three channels are group conversations keyed `0^all` / `1^all` /
+`2^all`; a DM to FTG1 is a separate conversation keyed `8!f6fb8e00`, where 8 is
+`PKC_CHANNEL_INDEX`, a sentinel rather than a real channel. `ftg-priv` is
+private in that strangers cannot read it, but it is still a broadcast to
+everyone holding the key. With `dm_only = true` a channel post is recorded and
+**not** forwarded.
 FTG2 got them by applying FTG1's channel URL, so the keys match exactly.
 
 **FTG2's fixed position is deliberate.** It is a portable node with no GPS, set
