@@ -63,6 +63,10 @@ class Settings:
         self.port = listen.get("port", fallback="").strip()
         if not self.port:
             raise ConfigError("[listen] port is required")
+        # Which radio this listener speaks for, matched against "deviceId" in
+        # the phone book. Left blank, it is taken from the radio's own short
+        # name at connect time, so there is one fewer place to get out of step.
+        self.device_id = listen.get("device_id", fallback="").strip()
         self.dm_only = listen.getboolean("dm_only", fallback=True)
         self.channel_allowlist = _split_list(listen.get("channels", fallback=""))
         self.ledger = _expand(listen.get("ledger", fallback="etc/secrets/received.jsonl"))
@@ -78,6 +82,13 @@ class Settings:
         self.sms_enabled = sms.getboolean("enabled", fallback=False)
         self.sms_to = _split_list(sms.get("to", fallback=""))
         self.sms_from = sms.get("from", fallback="").strip()
+        # Recipients can also come from a phone book keyed by device, so that
+        # adding a person is a data change rather than a config change, and so
+        # a second radio can route somewhere else entirely.
+        phones = sms.get("phones_file", fallback="").strip()
+        self.phones_file = _expand(phones) if phones else None
+        self.sms_gateway = sms.get("gateway", fallback="msg.fi.google.com").strip()
+        self.phone_book = _load_phone_book(self.phones_file) if self.phones_file else []
         # Carrier gateways truncate hard and some prepend the subject to the
         # body. Default to no subject and a conservative length.
         self.sms_subject = sms.get("subject", fallback="").strip()
@@ -90,14 +101,93 @@ class Settings:
 
         if self.email_enabled and not self.email_to:
             raise ConfigError("[email] enabled but no 'to' address given")
-        if self.sms_enabled and not self.sms_to:
-            raise ConfigError("[sms] enabled but no 'to' address given")
+        if self.sms_enabled and not (self.sms_to or self.phone_book):
+            raise ConfigError(
+                "[sms] enabled but neither 'to' nor a non-empty 'phones_file' was given"
+            )
+
+    def sms_recipients(self, device_id: str | None) -> list[tuple[str, str]]:
+        """Addresses to text for this device, as (address, person) pairs.
+
+        Any literal [sms] to= addresses always apply. Phone-book entries apply
+        only when their deviceId matches, so one file can serve several radios.
+        """
+        out = [(addr, "") for addr in self.sms_to]
+        if not device_id:
+            if self.phone_book:
+                LOG.warning(
+                    "phone book has %d entr(ies) but this listener has no device id, "
+                    "so none of them can be matched",
+                    len(self.phone_book),
+                )
+            return out
+        for entry in self.phone_book:
+            if entry["deviceId"].casefold() != device_id.casefold():
+                continue
+            if not entry.get("enabled", True):
+                LOG.info("phone book entry for %s is disabled, skipping", entry["name"])
+                continue
+            gateway = entry.get("gateway") or self.sms_gateway
+            out.append((f"{entry['phone']}@{gateway}", entry["name"]))
+        return out
 
     @staticmethod
     def _section(parser: configparser.ConfigParser, name: str):
         if not parser.has_section(name):
             parser.add_section(name)
         return parser[name]
+
+
+def _load_phone_book(path: Path) -> list[dict]:
+    """Read the device-to-people routing file.
+
+    Shape is a list of objects; deviceId, name and phone are required, gateway
+    and enabled are optional:
+
+        [{"deviceId": "FTG1", "name": "Jeffrey", "phone": "5555550123"}]
+
+    Validation is strict on purpose. A carrier gateway silently discards mail
+    for an address it does not recognise, so a typo here would look exactly
+    like a delivered message that never arrived.
+    """
+    try:
+        raw = json.loads(path.read_text(encoding="utf-8"))
+    except FileNotFoundError as exc:
+        raise ConfigError(f"phones_file does not exist: {path}") from exc
+    except json.JSONDecodeError as exc:
+        raise ConfigError(f"phones_file is not valid JSON ({path}): {exc}") from exc
+
+    if not isinstance(raw, list):
+        raise ConfigError(f"phones_file must contain a JSON list, got {type(raw).__name__}")
+
+    entries = []
+    for index, item in enumerate(raw):
+        where = f"{path} entry {index}"
+        if not isinstance(item, dict):
+            raise ConfigError(f"{where}: expected an object, got {type(item).__name__}")
+        for key in ("deviceId", "name", "phone"):
+            if not str(item.get(key, "")).strip():
+                raise ConfigError(f"{where}: missing or empty {key!r}")
+        digits = "".join(ch for ch in str(item["phone"]) if ch.isdigit())
+        # Accept a leading US country code but store the 10-digit form, which
+        # is what the carrier gateways expect.
+        if len(digits) == 11 and digits.startswith("1"):
+            digits = digits[1:]
+        if len(digits) != 10:
+            raise ConfigError(
+                f"{where}: {item['phone']!r} is not a 10-digit US number "
+                f"(got {len(digits)} digits)"
+            )
+        entries.append(
+            {
+                "deviceId": str(item["deviceId"]).strip(),
+                "name": str(item["name"]).strip(),
+                "phone": digits,
+                "gateway": str(item.get("gateway", "")).strip(),
+                "enabled": bool(item.get("enabled", True)),
+            }
+        )
+    return entries
 
 
 def _split_list(raw: str) -> list[str]:
@@ -119,6 +209,9 @@ class Notifier:
     def __init__(self, settings: Settings, dry_run: bool = False):
         self.s = settings
         self.dry_run = dry_run
+        # Set once the radio is open, or from [listen] device_id. Selects which
+        # phone-book entries apply.
+        self.device_id: str | None = settings.device_id or None
         self._sms_times: deque[float] = deque()
 
     def _sendmail(self, msg: EmailMessage, label: str) -> bool:
@@ -162,24 +255,39 @@ class Notifier:
     def sms(self, record: dict) -> bool:
         if not self.s.sms_enabled:
             return False
-        if not self._sms_budget_ok():
+        recipients = self.s.sms_recipients(self.device_id)
+        if not recipients:
             LOG.warning(
-                "SMS suppressed: more than %d in the last hour", self.s.sms_max_per_hour
+                "SMS enabled but no recipient matched device id %r", self.device_id
             )
             return False
-        msg = EmailMessage()
-        msg["To"] = ", ".join(self.s.sms_to)
-        if self.s.sms_from:
-            msg["From"] = self.s.sms_from
-        # Left empty by default: several gateways prepend the subject to the
-        # body, which wastes characters that are already scarce.
-        if self.s.sms_subject:
-            msg["Subject"] = self.s.sms_subject
-        msg.set_content(_format_sms_body(record, self.s.sms_max_chars))
-        sent = self._sendmail(msg, "sms")
-        if sent:
-            self._sms_times.append(time.time())
-        return sent
+
+        body = _format_sms_body(record, self.s.sms_max_chars)
+        any_sent = False
+        # One message per recipient rather than one with several addressees:
+        # carrier gateways handle a single destination far more predictably,
+        # and one bad address then cannot suppress the others.
+        for address, person in recipients:
+            if not self._sms_budget_ok():
+                LOG.warning(
+                    "SMS to %s suppressed: more than %d in the last hour",
+                    person or address,
+                    self.s.sms_max_per_hour,
+                )
+                continue
+            msg = EmailMessage()
+            msg["To"] = address
+            if self.s.sms_from:
+                msg["From"] = self.s.sms_from
+            # Left empty by default: several gateways prepend the subject to
+            # the body, which spends characters that are already scarce.
+            if self.s.sms_subject:
+                msg["Subject"] = self.s.sms_subject
+            msg.set_content(body)
+            if self._sendmail(msg, f"sms[{person or address}]"):
+                self._sms_times.append(time.time())
+                any_sent = True
+        return any_sent
 
     def _sms_budget_ok(self) -> bool:
         cutoff = time.time() - 3600
@@ -415,6 +523,17 @@ class Listener:
                 info = getattr(iface, "myInfo", None)
                 self.my_num = getattr(info, "my_node_num", None)
                 self.my_id = f"!{self.my_num:08x}" if self.my_num else None
+                if not self.s.device_id:
+                    node = (iface.nodes or {}).get(self.my_id) or {}
+                    short = (node.get("user") or {}).get("shortName")
+                    if short:
+                        self.notifier.device_id = short
+                        LOG.info("device id taken from the radio: %s", short)
+                    else:
+                        LOG.warning(
+                            "no device id in the config and the radio did not "
+                            "report a short name; phone-book routing is inactive"
+                        )
                 LOG.info(
                     "listening as %s (%s), dm_only=%s, ledger=%s",
                     self.my_id,
@@ -462,6 +581,11 @@ def self_test(settings: Settings, notifier: Notifier) -> int:
         "rx_rssi": 0,
         "portnum": "TEXT_MESSAGE_APP",
     }
+    recipients = settings.sms_recipients(notifier.device_id)
+    print(f"device id: {notifier.device_id or '(none -- phone book cannot match)'}")
+    for address, person in recipients:
+        local, _, domain = address.partition("@")
+        print(f"  sms -> {person or '(literal)'}: {local[:3]}***@{domain}")
     email_ok = notifier.email(record)
     sms_ok = notifier.sms(record)
     print(f"email: {'sent' if email_ok else 'NOT sent'}")
@@ -484,6 +608,11 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument(
         "--dry-run", action="store_true", help="log what would be sent, send nothing"
     )
+    parser.add_argument(
+        "--device-id",
+        help="which radio this listener speaks for, overriding [listen] device_id. "
+        "Mainly for --self-test, which has no radio to read a short name from.",
+    )
     parser.add_argument("-v", "--verbose", action="store_true")
     args = parser.parse_args(argv)
 
@@ -501,6 +630,8 @@ def main(argv: list[str] | None = None) -> int:
         return 2
 
     notifier = Notifier(settings, dry_run=args.dry_run)
+    if args.device_id:
+        notifier.device_id = args.device_id
     if args.self_test:
         return self_test(settings, notifier)
 
