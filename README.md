@@ -194,17 +194,24 @@ Four behaviours are deliberate and worth knowing:
 - **A carrier SMS gateway drops messages silently** and gives no delivery
   receipt. If a message has to arrive, this is the wrong transport.
 
-Run it as a service with `etc/systemd/meshtastic-listener.service`, a **user**
-unit — the listener needs group `dialout` and writes into the checkout, so
-running it as root would leave root-owned files behind:
+Run it as a service. The unit is **generated**, not committed, because it has
+to carry this checkout's absolute path — a unit file with someone else's home
+directory baked in is worse than none:
 
 ```bash
-mkdir -p ~/.config/systemd/user
-ln -sf "$PWD/etc/systemd/meshtastic-listener.service" ~/.config/systemd/user/
-systemctl --user daemon-reload
+./scripts/meshtastic-listener.sh install-service      # user unit
 systemctl --user enable --now meshtastic-listener
-sudo loginctl enable-linger "$USER"     # survive logout and reboot
+sudo loginctl enable-linger "$USER"                   # survive logout
+
+./scripts/meshtastic-listener.sh install-service -s   # or a system unit
+sudo systemctl enable --now meshtastic-listener
 ```
+
+Either way it runs as **your account, never root** — the listener needs group
+`dialout` and writes into the checkout, so root would leave root-owned files
+that break the next ordinary run. Prefer `-s` on a headless always-on host: a
+system unit starts at boot with no session and needs no lingering. See
+[docs/raspberry-pi-deployment.md](docs/raspberry-pi-deployment.md).
 
 **The radio serves one host at a time.** While the listener runs, `meshtastic
 --info` and anything else that opens the port will fail. Stop it first:
@@ -473,7 +480,6 @@ scripts/                install, host setup, build and flash
 scripts/lib/            shared shell helpers
 tests/                  listener tests, no radio required
 etc/listener.conf.example  template for etc/secrets/listener.conf
-etc/systemd/            user unit for the listener
 etc/rnode/              RNode parameters and how to restore them
 .claude/commands/       slash commands for issue and board workflow
 docs/                    ticket Quick View, regenerated from the board
@@ -484,6 +490,7 @@ docs/Reticulum-Overview.md            short primer on the stack
 docs/Reticulum-value-and-limits.md    what it is for, and what it will not do
 docs/aredn-as-a-transport.md          reference: AREDN, and why Part 97 rules it out here
 docs/config-tools.md                  GUI alternatives to the CLIs, and how to install each
+docs/raspberry-pi-deployment.md       moving the radio and listener to a Pi 4
 docs/meshtastic-rf-survey.md          what was measured on the air around FTG1 (#3)
 etc/reticulum/          Reticulum config for FTG1, and its backups
 etc/secrets/            device config exports and anything else local — gitignored
