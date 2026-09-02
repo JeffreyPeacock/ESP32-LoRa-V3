@@ -36,11 +36,31 @@ reconnect_secs = 15
 # outbound through a smarthost, so nothing else needs configuring.
 sendmail = /usr/sbin/sendmail
 
+# Two things below are NOT ours to set, and it is worth knowing which:
+#
+# The From address you see on the handset is decided by postfix, not here.
+# smtp_generic_maps rewrites the sender on the way out; a line like
+#   @thishost    someone@example.com
+# in /etc/postfix/generic replaces whatever "from" says above. Change it by
+# adding a MORE specific entry (a full address beats a bare @host) and running
+# postmap, then confirm the smarthost will accept that sender for the
+# authenticated account -- many relays refuse a sender they do not own.
+#
+# A "[Potential Spam]" or similar subject tag is added upstream, by the relay
+# or by the receiving carrier. Nothing on this host does it. Giving the message
+# a real subject helps a little; the real fix is an allowlist on whichever
+# system is tagging it.
+
 [email]
 enabled = true
 to = you@example.com
 from = ftg1@localhost
 subject_prefix = [FTG1]
+
+# str.format over the ledger fields, plus {prefix} and {who}. Any field in a
+# ledger row is available: text, from_id, from_short, from_long, channel_name,
+# rx_snr, rx_rssi, hops_away, received_at, and the rest.
+subject_template = {prefix} message from {who}
 
 [sms]
 # A carrier email-to-SMS gateway. Google Fi's is <10 digits>@msg.fi.google.com.
@@ -72,8 +92,14 @@ to =
 # body, which spends characters that are already scarce.
 subject =
 
-# Truncation point for the message text. The sender and SNR are appended
-# after this, so the delivered message is slightly longer.
+# What the text message says. str.format over the same ledger fields as the
+# email subject. {text} is truncated to whatever room the rest of the template
+# leaves, so anything you put after it survives; the total lands on max_chars.
+# An unknown field renders as <name?> and a malformed template falls back to
+# the bare text -- a typo should look wrong, not stop the listener.
+body_template = {text} [{from_short} {rx_snr}dB]
+
+# Total length of the rendered message.
 max_chars = 140
 
 # A ceiling, so a chatty channel or a rebroadcast loop cannot run up a bill or

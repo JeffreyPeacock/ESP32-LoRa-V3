@@ -77,6 +77,9 @@ class Settings:
         self.email_to = _split_list(email_s.get("to", fallback=""))
         self.email_from = email_s.get("from", fallback="").strip()
         self.email_subject_prefix = email_s.get("subject_prefix", fallback="[FTG1]").strip()
+        self.email_subject_template = email_s.get(
+            "subject_template", fallback="{prefix} message from {who}"
+        ).strip()
 
         sms = self._section(parser, "sms")
         self.sms_enabled = sms.getboolean("enabled", fallback=False)
@@ -92,6 +95,11 @@ class Settings:
         # Carrier gateways truncate hard and some prepend the subject to the
         # body. Default to no subject and a conservative length.
         self.sms_subject = sms.get("subject", fallback="").strip()
+        # str.format template over the ledger fields. {text} is truncated to
+        # whatever room the rest of the template leaves.
+        self.sms_body_template = sms.get(
+            "body_template", fallback="{text} [{from_short} {rx_snr}dB]"
+        ).strip()
         self.sms_max_chars = sms.getint("max_chars", fallback=140)
         self.sms_max_per_hour = sms.getint("max_per_hour", fallback=20)
 
@@ -248,7 +256,12 @@ class Notifier:
         if self.s.email_from:
             msg["From"] = self.s.email_from
         who = record.get("from_long") or record.get("from_id") or "unknown"
-        msg["Subject"] = f"{self.s.email_subject_prefix} message from {who}".strip()
+        msg["Subject"] = _render(
+            self.s.email_subject_template,
+            record,
+            prefix=self.s.email_subject_prefix,
+            who=who,
+        ).strip()
         msg.set_content(_format_email_body(record))
         return self._sendmail(msg, "email")
 
@@ -262,7 +275,7 @@ class Notifier:
             )
             return False
 
-        body = _format_sms_body(record, self.s.sms_max_chars)
+        body = _format_sms_body(record, self.s.sms_max_chars, self.s.sms_body_template)
         any_sent = False
         # One message per recipient rather than one with several addressees:
         # carrier gateways handle a single destination far more predictably,
@@ -296,6 +309,28 @@ class Notifier:
         return len(self._sms_times) < self.s.sms_max_per_hour
 
 
+class _SafeFields(dict):
+    """Render a template without crashing on an unknown field.
+
+    A typo in a template should produce a visibly wrong message, not take the
+    listener down in the middle of forwarding something.
+    """
+
+    def __missing__(self, key):
+        LOG.warning("template referenced unknown field %r", key)
+        return f"<{key}?>"
+
+
+def _render(template: str, record: dict, **extra) -> str:
+    fields = _SafeFields({k: ("" if v is None else v) for k, v in record.items()})
+    fields.update(extra)
+    try:
+        return template.format_map(fields)
+    except (ValueError, IndexError) as exc:
+        LOG.error("template %r is malformed (%s); falling back to the raw text", template, exc)
+        return str(record.get("text", ""))
+
+
 def _format_email_body(record: dict) -> str:
     lines = [record.get("text", ""), "", "-- metadata --"]
     for key in (
@@ -322,18 +357,19 @@ def _format_email_body(record: dict) -> str:
     return "\n".join(lines) + "\n"
 
 
-def _format_sms_body(record: dict, limit: int) -> str:
-    who = record.get("from_short") or record.get("from_id") or "?"
-    snr = record.get("rx_snr")
-    tail = f" [{who}"
-    if snr is not None:
-        tail += f" {snr}dB"
-    tail += "]"
-    text = record.get("text", "")
-    room = max(limit - len(tail), 1)
+def _format_sms_body(record: dict, limit: int, template: str) -> str:
+    """Render the template, truncating {text} rather than the whole message.
+
+    Truncating the finished string would cut off the sender and signal that the
+    template deliberately puts at the end, so the overhead is measured first and
+    the message text is fitted into what is left.
+    """
+    overhead = len(_render(template, {**record, "text": ""}))
+    room = max(limit - overhead, 1)
+    text = str(record.get("text", "") or "")
     if len(text) > room:
-        text = text[: room - 1] + "…"
-    return text + tail
+        text = text[: max(room - 1, 1)] + "…"
+    return _render(template, {**record, "text": text})
 
 
 # --- packet handling ---------------------------------------------------------
