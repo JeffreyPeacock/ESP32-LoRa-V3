@@ -145,12 +145,11 @@ to finish before touching the radio. Then, once the checkout exists:
 which exercises the real code path, including the phone book, with no radio
 attached.
 
-#### The general shape
-
-
+#### Why one relay covers both
 
 Both notification paths go through the local MTA, because **an SMS here is an
-email** to a carrier gateway. One working relay covers both.
+email** to a carrier gateway. There is no second service and no second
+credential to manage.
 
 Without it the listener still records everything to the ledger — it just cannot
 tell anyone. That failure is visible in the journal and in the ledger's
