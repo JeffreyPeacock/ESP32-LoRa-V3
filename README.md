@@ -227,8 +227,8 @@ RNode — RNode firmware has no SAMD support at all.
 
 | Board | MCU | Radio | MAC | Role |
 |---|---|---|---|---|
-| Heltec V3 — **FTG1** | ESP32-S3 | SX1262 | `44:1B:F6:FB:8E:00` | fixed node, RNode 1.86 |
-| Heltec V3 **#2** | ESP32-S3 | SX1262 | `44:1B:F6:FA:AC:5C` | portable node, RNode 1.86 — hosted by a phone over BLE, battery powered |
+| Heltec V3 — **FTG1** | ESP32-S3 | SX1262 | `44:1B:F6:FB:8E:00` | stationary node, Meshtastic 2.7.26 — listener on USB |
+| Heltec V3 **#2** — **FTG2** | ESP32-S3 | SX1262 | `44:1B:F6:FA:AC:5C` | portable node, Meshtastic 2.7.26 — hosted by a phone over BLE, battery powered |
 | SparkFun Pro RF ×2 | SAMD21 | RFM95 / SX1276 | — | point-to-point pair, separate work |
 
 **Do not identify a board by its `ttyUSBn` number.** Both Heltecs report the
@@ -262,26 +262,37 @@ Note the consequence recorded in `docs/Reticulum-exploration-notes.md`: **do not
 move our link off 915.000** to dodge local interference. It is the frequency
 another RNode operator would most likely arrive on.
 
-## FTG1 configuration
+## Live configuration
 
-**FTG1 currently runs RNode, not Meshtastic.** The board holds one firmware at a
-time. The Meshtastic configuration below is preserved because it is what gets
-restored, not because it is loaded right now.
+**Both Heltecs run Meshtastic 2.7.26** as of 2026-09-01. RNode was saved off
+first; `etc/rnode/RESTORE.md` has everything needed to put it back.
 
-| | |
-|---|---|
-| Firmware | RNode 1.86 (verified on the board 2026-08-27) |
-| Reticulum | 1.4.2 — **`rnsd` is not currently running**; start it to put FTG1 back on the network |
-| Reticulum identity | `<093df62a1a0b828fd38bf9d2013b4394>` |
-| LXMF address | `<9c001c033d66827d06fefbbbf0737af6>` |
-| LoRa | 915.000 MHz, BW 125 kHz, SF8, CR5 — **2 dBm**, a bench setting; raise to 17–22 before deploying |
-| Interfaces | RNode + three internet backbones; transport and discovery off |
-| Serial path | `/dev/serial/by-path/pci-0000:00:14.0-usb-0:3:1.0-port0` — re-confirmed by MAC 2026-09-01 |
-| Set by | #8, #15 |
+| | FTG1 — stationary | FTG2 — portable |
+|---|---|---|
+| Node ID | `!f6fb8e00` | `!f6faac5c` |
+| Name | `FLG Tech Group 01` / `FTG1` | `FLG Tech Group 02` / `FTG2` |
+| Host | USB to this machine, running the listener | a phone over BLE |
+| Region / preset | US, `LONG_FAST` | US, `LONG_FAST` |
+| Bluetooth | enabled | enabled, **random PIN shown on the OLED** |
+| WiFi / MQTT | off / off | off / off |
+| Uplink / downlink | off on all channels | off on all channels |
+| Position | fixed, a public landmark | **fixed, the same landmark as FTG1** |
+| `position_precision` | 13 (km scale) | 13 (km scale) |
+| GPS | none fitted | none fitted |
+| Serial path | `…usb-0:3:1.0-port0` | `…usb-0:5.3.3.3:1.0-port0` |
 
-Restore Meshtastic with
-`etc/firmware/rollback-heltec-v3/device-install.sh -p /dev/ttyUSB0 -f firmware-heltec-v3-2.7.26.54e0d8d.factory.bin`,
-then re-import from `etc/secrets/`. The node ID survives any reflash.
+Both carry the same three channels: the default LongFast primary, `mqtt`, and
+**`ftg-priv`** with a generated key, which is the one they message each other on.
+FTG2 got them by applying FTG1's channel URL, so the keys match exactly.
+
+**FTG2's fixed position is deliberate.** It is a portable node with no GPS, set
+to report the same landmark as FTG1 rather than where it actually is. Note the
+consequence: it will keep claiming that location while out in the field, and
+enabling "provide phone location" in the app would override it with your real
+position on a channel that neighbouring gateways can read.
+
+Revert to RNode with `etc/rnode/RESTORE.md`. The node IDs survive any reflash —
+they are derived from the MAC.
 
 ### Meshtastic configuration, as last set (#1–#7)
 
