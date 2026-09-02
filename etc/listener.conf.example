@@ -31,6 +31,28 @@ ledger = etc/secrets/received.jsonl
 # How long to wait before reopening the port after the radio goes away.
 reconnect_secs = 15
 
+[recipients]
+# Who to notify, keyed by device. This one file drives BOTH email and SMS, so
+# adding a person is a data change rather than a config change, and a second
+# radio can notify entirely different people:
+#
+#   [
+#     {"deviceId": "FTG1", "name": "Jeffrey",
+#      "phone": "5555550123", "email": "someone@example.com"}
+#   ]
+#
+# deviceId is matched against [listen] device_id, or against the radio's own
+# short name when that is blank. An entry needs at least one of "phone" or
+# "email" -- neither is a mistake, not a preference. "gateway" and "enabled"
+# are optional per entry. Numbers are validated as 10 US digits and addresses
+# are sanity-checked at startup, because a carrier gateway discards mail for
+# an address it does not recognise without saying so: a typo must not be
+# discoverable only by a message failing to arrive.
+file = etc/secrets/sms-phones.json
+
+# Read instead as [sms] phones_file if this section is absent, so an older
+# config keeps working.
+
 [mail]
 # Both email and SMS go through the local MTA. Postfix on this host relays
 # outbound through a smarthost, so nothing else needs configuring.
@@ -73,24 +95,6 @@ subject_template = {prefix} message from {who}
 enabled = true
 from = ftg1@localhost
 
-# People to notify, keyed by device, so adding someone is a data change rather
-# than a config change and a second radio can route somewhere else entirely.
-# The same file drives BOTH sms and email:
-#
-#   [
-#     {"deviceId": "FTG1", "name": "Jeffrey",
-#      "phone": "5555550123", "email": "someone@example.com"}
-#   ]
-#
-# deviceId is matched against [listen] device_id, or against the radio's own
-# short name when that is blank. An entry needs at least one of "phone" or
-# "email" -- neither is a mistake, not a preference. "gateway" and "enabled"
-# are optional. Numbers are validated as 10 US digits at startup, because a
-# carrier gateway discards mail for an address it does not recognise without
-# saying so.
-#
-# Note this key lives under [sms] for historical reasons but feeds email too.
-phones_file = etc/secrets/sms-phones.json
 
 # Appended to a bare number from the phone book. Override per entry for a
 # recipient on a different carrier.

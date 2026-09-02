@@ -86,11 +86,16 @@ class Settings:
         self.sms_enabled = sms.getboolean("enabled", fallback=False)
         self.sms_to = _split_list(sms.get("to", fallback=""))
         self.sms_from = sms.get("from", fallback="").strip()
-        # Recipients can also come from a phone book keyed by device, so that
-        # adding a person is a data change rather than a config change, and so
-        # a second radio can route somewhere else entirely.
-        phones = sms.get("phones_file", fallback="").strip()
-        self.phones_file = _expand(phones) if phones else None
+        # Recipients can also come from a book keyed by device, so that adding
+        # a person is a data change rather than a config change, and so a
+        # second radio can route somewhere else entirely. It feeds email and
+        # SMS alike, hence its own section; [sms] phones_file is still read so
+        # an existing config keeps working.
+        recipients = self._section(parser, "recipients")
+        book = recipients.get("file", fallback="").strip()
+        if not book:
+            book = sms.get("phones_file", fallback="").strip()
+        self.phones_file = _expand(book) if book else None
         self.sms_gateway = sms.get("gateway", fallback="msg.fi.google.com").strip()
         self.phone_book = _load_phone_book(self.phones_file) if self.phones_file else []
         # Carrier gateways truncate hard and some prepend the subject to the

@@ -31,8 +31,15 @@ class FakeNotifier(ML.Notifier):
         sent.append((label, msg["To"], msg.get("Subject"), msg.get_content()))
         return True
 notifier = FakeNotifier(settings)
+# Pin the recipients rather than inheriting whatever the deployment routes.
+# This test is about the forwarding decision, not about who gets told, and it
+# must not start failing because someone edited the live phone book.
+notifier.s.email_enabled = True
+notifier.s.email_to = ["inbox@example.invalid"]
 notifier.s.sms_enabled = True
 notifier.s.sms_to = ["5555550123@msg.fi.google.com"]
+notifier.s.phone_book = []
+notifier.device_id = None
 
 listener = ML.Listener(settings, notifier)
 listener.my_num = 4143681024
