@@ -155,20 +155,32 @@ Copy `etc/listener.conf.example` to `etc/secrets/listener.conf` and fill it in.
 The real file names an email address, which is why it lives under
 `etc/secrets/` — gitignored as a whole directory.
 
-**SMS recipients come from a phone book keyed by device**, so adding a person
-is a data change rather than a config change, and a second radio can route
-somewhere else entirely. `etc/secrets/sms-phones.json`:
+**Recipients come from a book keyed by device**, so adding a person is a data
+change rather than a config change, and a second radio can notify entirely
+different people. One file drives **both email and SMS**:
+
+```ini
+[recipients]
+file = etc/secrets/sms-phones.json
+```
 
 ```json
 [
-  { "deviceId": "FTG1", "name": "Jeffrey", "phone": "5555550123" }
+  { "deviceId": "FTG1", "name": "Jeffrey",
+    "phone": "5555550123", "email": "someone@example.com" }
 ]
 ```
+
+An entry needs at least one of `phone` or `email` — neither is a mistake, not a
+preference. Leave `[email] to` and `[sms] to` empty to route purely by device;
+anything set there is copied on every message regardless of which radio heard
+it. `[sms] phones_file` is still read when `[recipients]` is absent.
 
 `deviceId` is matched against `[listen] device_id`, or — when that is blank —
 against the radio's own short name read at connect time, which is one fewer
 place for the two to drift apart. `gateway` and `enabled` are optional per
-entry, so one person can sit on a different carrier.
+entry, so one person can sit on a different carrier or be switched off without
+being deleted.
 
 **Numbers are validated at startup**, not at send time: ten US digits, with a
 leading `1` accepted and stripped. That strictness is deliberate — a carrier
