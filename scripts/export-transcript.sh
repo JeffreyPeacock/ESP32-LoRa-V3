@@ -272,6 +272,15 @@ PATTERNS = [
      r'(^\s*\.?SSID\s*=\s*)(?!\*)(\S+)'),
     ('wifi ssid (argument)',
      r'(--set\s+network\.wifi_ssid\s+)(?!\*)([\'"]?[^\'"\s]+[\'"]?)'),
+    # etc/secrets/sms-phones.json routes messages to real people. The number is
+    # personal data and the repository is public, so mask both the JSON field
+    # and the gateway address the listener builds from it.
+    ('sms phone (json)',
+     r'("phone"\s*:\s*")(?!\*)([0-9+()\-. ]{7,})'),
+    # Empty group 1 on purpose: the masker keeps group(1) and replaces the
+    # rest, so the number itself must sit outside it or it survives masking.
+    ('sms gateway address',
+     r'()\b\d{10}@(?:msg\.fi\.google\.com|[a-z0-9.-]*(?:tmomail|vtext|txt\.att|messaging)[a-z0-9.-]*)'),
 ]
 
 masked = {}

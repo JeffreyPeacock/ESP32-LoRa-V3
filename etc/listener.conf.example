@@ -15,6 +15,11 @@ port = /dev/serial/by-path/pci-0000:00:14.0-usb-0:3:1.0-port0
 # false -- also forward broadcasts, subject to the channel allowlist below
 dm_only = true
 
+# Which radio this listener speaks for, matched against "deviceId" in the
+# phone book. Leave blank to take it from the radio's own short name, which
+# is one fewer place for the two to get out of step.
+device_id =
+
 # Only consulted when dm_only = false. Empty means every channel. Names are
 # the channel names as configured on the radio; channel 0 is "primary".
 channels =
@@ -42,8 +47,26 @@ subject_prefix = [FTG1]
 # Gateways drop messages silently and give no delivery receipt -- if a message
 # has to arrive, this is the wrong transport.
 enabled = true
-to = 5555550123@msg.fi.google.com
 from = ftg1@localhost
+
+# Recipients, keyed by device, so adding a person is a data change rather than
+# a config change and a second radio can route somewhere else entirely:
+#
+#   [{"deviceId": "FTG1", "name": "Jeffrey", "phone": "5555550123"}]
+#
+# deviceId is matched against [listen] device_id, or against the radio's own
+# short name when that is blank. "gateway" and "enabled" are optional per
+# entry. Numbers are validated as 10 US digits at startup, because a carrier
+# gateway discards mail for an address it does not recognise without saying so.
+phones_file = etc/secrets/sms-phones.json
+
+# Appended to a bare number from the phone book. Override per entry for a
+# recipient on a different carrier.
+gateway = msg.fi.google.com
+
+# Literal addresses, applied for every device regardless of the phone book.
+# Usually left empty; the phone book is the better place.
+to =
 
 # Left empty on purpose: several gateways prepend the subject to the message
 # body, which spends characters that are already scarce.

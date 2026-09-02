@@ -152,8 +152,30 @@ tail        follow the ledger
 ```
 
 Copy `etc/listener.conf.example` to `etc/secrets/listener.conf` and fill it in.
-The real file names a phone number and an email address, which is why it lives
-under `etc/secrets/` — gitignored as a whole directory.
+The real file names an email address, which is why it lives under
+`etc/secrets/` — gitignored as a whole directory.
+
+**SMS recipients come from a phone book keyed by device**, so adding a person
+is a data change rather than a config change, and a second radio can route
+somewhere else entirely. `etc/secrets/sms-phones.json`:
+
+```json
+[
+  { "deviceId": "FTG1", "name": "Jeffrey", "phone": "5555550123" }
+]
+```
+
+`deviceId` is matched against `[listen] device_id`, or — when that is blank —
+against the radio's own short name read at connect time, which is one fewer
+place for the two to drift apart. `gateway` and `enabled` are optional per
+entry, so one person can sit on a different carrier.
+
+**Numbers are validated at startup**, not at send time: ten US digits, with a
+leading `1` accepted and stripped. That strictness is deliberate — a carrier
+gateway discards mail for an address it does not recognise without reporting
+anything, so a typo would be indistinguishable from a message that was
+delivered and never arrived. Each recipient gets their own message rather than
+one with several addressees, so a single bad address cannot suppress the rest.
 
 **Both notifications go through the local MTA.** Postfix on this host relays
 outbound, and an SMS to a carrier gateway is just a short email to

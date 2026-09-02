@@ -35,6 +35,7 @@ usage: $(basename -- "$0") [run|self-test|check|tail] [options]
 
 options:
   -c FILE     config file (default: ${DEFAULT_CONFIG})
+  -d ID       device id for phone-book routing (self-test needs this)
   -n          dry run: log what would be sent, send nothing
   -v          verbose
 
@@ -58,9 +59,10 @@ case "${1:-}" in
         ;;
 esac
 
-while getopts ':c:nvh' opt; do
+while getopts ':c:d:nvh' opt; do
     case "${opt}" in
         c) CONFIG="${OPTARG}" ;;
+        d) PASSTHROUGH+=('--device-id' "${OPTARG}") ;;
         n) PASSTHROUGH+=('--dry-run') ;;
         v) PASSTHROUGH+=('--verbose') ;;
         h)
