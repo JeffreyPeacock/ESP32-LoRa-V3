@@ -49,27 +49,112 @@ one socket on the Pi and leave the radio in it.
 
 ### Mail is the real dependency, and it is not installed by default
 
-Both notification paths — email and SMS — go through the local MTA. The desktop
-relays through a smarthost with SASL authentication, configured in
-`/etc/postfix/main.cf`:
+**Configure this first.** Nothing else can be validated without it: the
+listener's only outputs are email and SMS, and SMS is email. Get mail working
+on the Pi before the radio is even plugged in — `self-test` needs no radio, so
+mail can be proven on its own.
+
+#### The working configuration, from this desktop
+
+Install postfix and choose **"Satellite system"** when debconf asks; that is
+the profile this needs — deliver nothing locally, relay everything to a
+smarthost. Then set:
 
 ```
-relayhost = [mail.wonkware.com]:587
-smtp_sasl_auth_enable = yes
-smtp_sasl_password_maps = hash:/etc/postfix/sasl_passwd
+relayhost                  = [mail.wonkware.com]:587
+smtp_sasl_auth_enable      = yes
+smtp_sasl_password_maps    = hash:/etc/postfix/sasl_passwd
 smtp_sasl_security_options = noanonymous
-smtp_tls_security_level = encrypt
-inet_interfaces = loopback-only
+smtp_tls_security_level    = encrypt
+smtp_tls_CApath            = /etc/ssl/certs
+smtp_generic_maps          = hash:/etc/postfix/generic
+smtp_address_preference    = ipv4
+inet_interfaces            = loopback-only
 ```
 
-**The Pi needs the same, and the credentials are not in this repository.** They
-live in `/etc/postfix/sasl_passwd` on the desktop, readable only by root. Get
-them from whoever administers `mail.wonkware.com` rather than copying the file
-around.
+`inet_interfaces = loopback-only` matters: the Pi must not accept mail from
+the network, only from itself.
 
-Without a working relay the listener still records everything to the ledger —
-it just cannot tell anyone. That failure is visible in the journal and in the
-ledger's `email_sent` / `sms_sent` fields, not silent.
+Applied as commands:
+
+```bash
+sudo apt install postfix                     # choose "Satellite system"
+sudo postconf -e 'relayhost = [mail.wonkware.com]:587' \
+  'smtp_sasl_auth_enable = yes' \
+  'smtp_sasl_password_maps = hash:/etc/postfix/sasl_passwd' \
+  'smtp_sasl_security_options = noanonymous' \
+  'smtp_tls_security_level = encrypt' \
+  'smtp_tls_CApath = /etc/ssl/certs' \
+  'smtp_generic_maps = hash:/etc/postfix/generic' \
+  'smtp_address_preference = ipv4' \
+  'inet_interfaces = loopback-only'
+```
+
+#### The two map files
+
+**Credentials.** `/etc/postfix/sasl_passwd` is `0600`, root-owned, and its
+contents are **not in this repository**. One line, from whoever administers the
+relay:
+
+```bash
+sudo install -m 600 /dev/null /etc/postfix/sasl_passwd
+sudo tee /etc/postfix/sasl_passwd >/dev/null <<'EOF'
+[mail.wonkware.com]:587    USER:PASSWORD
+EOF
+sudo postmap /etc/postfix/sasl_passwd
+```
+
+**Sender rewriting**, which is what makes the From address correct and DMARC
+align. The listener sends as `ftg1@ftg`; this maps it onto the real domain:
+
+```bash
+sudo tee -a /etc/postfix/generic >/dev/null <<'EOF'
+ftg1@ftg    ftg1@flagstafftechgroup.org
+EOF
+sudo postmap /etc/postfix/generic
+sudo systemctl reload postfix
+```
+
+That sender is not arbitrary — `flagstafftechgroup.org` publishes
+`v=spf1 include:wonkware.com -all`, and `wonkware.com` lists the relay's IP, so
+SPF passes and DMARC aligns. **A sender on a domain that does not authorise the
+relay fails SPF and scores worse than an unbranded address**, so do not
+substitute a different one without checking:
+
+```bash
+dig +short TXT flagstafftechgroup.org | grep spf1
+dig +short A mail.wonkware.com
+```
+
+#### Prove it before going further
+
+```bash
+printf 'Subject: pi mail test\nTo: you@example.com\n\nbody\n' \
+  | sendmail -f ftg1@ftg -t
+sudo journalctl -u postfix -n 20 --no-pager | grep -E 'status=|from=<'
+```
+
+Look for `status=sent (250 ...)` and `from=<ftg1@ftg>`. Anything else — a
+`status=bounced`, an auth failure, a `Connection refused` — is a mail problem
+to finish before touching the radio. Then, once the checkout exists:
+
+```bash
+./scripts/meshtastic-listener.sh self-test -d FTG1
+```
+
+which exercises the real code path, including the phone book, with no radio
+attached.
+
+#### The general shape
+
+
+
+Both notification paths go through the local MTA, because **an SMS here is an
+email** to a carrier gateway. One working relay covers both.
+
+Without it the listener still records everything to the ledger — it just cannot
+tell anyone. That failure is visible in the journal and in the ledger's
+`email_sent` / `sms_sent` fields, so it is loud rather than silent.
 
 ### `pip install` into the system Python is blocked
 
@@ -151,6 +236,9 @@ continuously and a low-power always-on box is exactly right for a transport or
 propagation node, which is the direction #15 points.
 
 ## Sequence
+
+Mail first — see above. Nothing below can be validated until `sendmail` reaches
+the relay.
 
 ```bash
 # on the Pi
