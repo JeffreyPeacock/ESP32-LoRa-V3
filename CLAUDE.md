@@ -365,6 +365,34 @@ beside the factory image; both are in the release zip, not in the per-board
 subset we had saved. Verify every `md5sum` against the `files` list in the
 metadata before flashing.
 
+## A direct message needs the recipient's public key, or it never transmits
+
+Proven on the bench 2026-09-01 with two freshly flashed nodes. **Broadcasts
+work immediately; direct messages do not.** Sending a DM to a node whose public
+key the sender does not hold fails *locally* -- the packet is never put on air:
+
+```
+$ meshtastic --port <B> --dest '!f6fb8e00' --sendtext "..." --ack
+Received a NAK, error reason: PKI_SEND_FAIL_PUBLIC_KEY
+```
+
+The same NAK appears on the primary channel and on a private channel, so it is
+not a channel-key problem. **Meshtastic 2.7 does not fall back to channel-PSK
+encryption for a DM.** Confirmed from the receiving side too: `--listen` on the
+target showed the control broadcast arriving and no trace of the DM.
+
+The key travels in **NodeInfo**, and a node hearing only a text packet learns
+the sender's node *number* but not its name or key -- the receiver's table
+showed `Meshtastic 8e00` with `publicKey` empty while already reporting
+`snr=5.75, hops=0`. So a node can be one hop away, plainly audible, and still
+unmessagable.
+
+NodeInfo goes out on `device.nodeInfoBroadcastSecs`, **default 10800 s (3
+hours)**, so two nodes flashed together may not be able to message each other
+for hours. Note what does *not* work as a shortcut: **`--set-owner` with the
+values it already has writes nothing and broadcasts nothing.** It has to be a
+real change.
+
 ## Power draw, from the datasheet (not estimated)
 
 Heltec datasheet Rev 1.1 Table 3.4, page 11, whole board, measured USB-powered.
@@ -427,7 +455,7 @@ best handle here, and both Reticulum configs use it:
 | Board | Path | Last confirmed |
 |---|---|---|
 | FTG1 | `pci-0000:00:14.0-usb-0:3:1.0-port0` | 2026-09-01, by MAC |
-| Heltec #2 | `pci-0000:00:14.0-usb-0:5.1.3.3:1.0-port0` | 2026-08-28 |
+| Heltec #2 | `pci-0000:00:14.0-usb-0:5.3.3.3:1.0-port0` | 2026-09-01, by MAC |
 
 **A by-path name is the socket, not the board, so moving a board breaks it.**
 FTG1 was on `pci-0000:00:14.0-usb-0:1.1:1.0-port0` until 2026-09-01, when it was
