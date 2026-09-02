@@ -53,6 +53,10 @@ sendmail = /usr/sbin/sendmail
 
 [email]
 enabled = true
+
+# Literal addresses, mailed for every device regardless of the phone book.
+# Leave empty to route purely by device through phones_file below. Setting
+# both means the literal address gets a copy of everything as well.
 to = you@example.com
 from = ftg1@localhost
 subject_prefix = [FTG1]
@@ -69,15 +73,23 @@ subject_template = {prefix} message from {who}
 enabled = true
 from = ftg1@localhost
 
-# Recipients, keyed by device, so adding a person is a data change rather than
-# a config change and a second radio can route somewhere else entirely:
+# People to notify, keyed by device, so adding someone is a data change rather
+# than a config change and a second radio can route somewhere else entirely.
+# The same file drives BOTH sms and email:
 #
-#   [{"deviceId": "FTG1", "name": "Jeffrey", "phone": "5555550123"}]
+#   [
+#     {"deviceId": "FTG1", "name": "Jeffrey",
+#      "phone": "5555550123", "email": "someone@example.com"}
+#   ]
 #
 # deviceId is matched against [listen] device_id, or against the radio's own
-# short name when that is blank. "gateway" and "enabled" are optional per
-# entry. Numbers are validated as 10 US digits at startup, because a carrier
-# gateway discards mail for an address it does not recognise without saying so.
+# short name when that is blank. An entry needs at least one of "phone" or
+# "email" -- neither is a mistake, not a preference. "gateway" and "enabled"
+# are optional. Numbers are validated as 10 US digits at startup, because a
+# carrier gateway discards mail for an address it does not recognise without
+# saying so.
+#
+# Note this key lives under [sms] for historical reasons but feeds email too.
 phones_file = etc/secrets/sms-phones.json
 
 # Appended to a bare number from the phone book. Override per entry for a

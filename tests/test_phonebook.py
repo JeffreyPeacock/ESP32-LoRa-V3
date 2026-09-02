@@ -35,12 +35,19 @@ for dev in ('FTG1', 'ftg1', 'FTG2', None):
     shown = [(a.split('@')[0][:3] + '***@' + a.split('@')[1], n) for a, n in got]
     print(f"  device_id={dev!r:8} -> {shown}")
 
+print("\nemail routing:")
+for dev in ("FTG1", "FTG2", None):
+    got = s.email_recipients(dev)
+    shown = [(a.split("@")[0][:3] + "***@" + a.split("@")[1], n) for a, n in got]
+    print(f"  device_id={dev!r:8} -> {shown}")
+
 print("\nvalidation (each must raise):")
 for bad, why in [
-    ([{"deviceId": "X", "name": "Y"}],                       "missing phone"),
-    ([{"deviceId": "X", "name": "Y", "phone": "12345"}],      "too few digits"),
-    ([{"deviceId": "", "name": "Y", "phone": "5555550123"}],  "empty deviceId"),
-    ({"deviceId": "X"},                                       "not a list"),
+    ([{"deviceId": "X", "name": "Y"}],                        "no phone or email"),
+    ([{"deviceId": "X", "name": "Y", "phone": "12345"}],       "too few digits"),
+    ([{"deviceId": "", "name": "Y", "phone": "5555550123"}],   "empty deviceId"),
+    ([{"deviceId": "X", "name": "Y", "email": "not-an-addr"}], "malformed email"),
+    ({"deviceId": "X"},                                        "not a list"),
 ]:
     p = book(bad)
     try:
@@ -49,6 +56,24 @@ for bad, why in [
         print(f"  ok  {why:16} -> {str(e).split(':')[-1].strip()[:52]}")
     finally:
         os.unlink(p)
+
+print("\naccepted shapes (each must load):")
+for good, why in [
+    ([{"deviceId": "D", "name": "N", "phone": "5555550123"}],            "phone only"),
+    ([{"deviceId": "D", "name": "N", "email": "a@b.co"}],                "email only"),
+    ([{"deviceId": "D", "name": "N", "phone": "5555550123",
+       "email": "a@b.co"}],                                             "both"),
+    ([{"deviceId": "D", "name": "N", "email": "a@b.co", "enabled": False}], "disabled"),
+]:
+    p2 = book(good)
+    try:
+        e = ML._load_phone_book(p2)[0]
+        print(f"  ok  {why:12} phone={e['phone'][:3] + '***' if e['phone'] else '(none)':10} "
+              f"email={'set' if e['email'] else '(none)'}  enabled={e['enabled']}")
+    except ML.ConfigError as exc:
+        print(f"  RAISED for {why} <-- BUG: {exc}")
+    finally:
+        os.unlink(p2)
 
 print("\nnormalisation:")
 p = book([{"deviceId": "D", "name": "N", "phone": "+1 (720) 555-0123"}])

@@ -108,8 +108,12 @@ class Settings:
             self._section(parser, "mail").get("sendmail", fallback="/usr/sbin/sendmail")
         )
 
-        if self.email_enabled and not self.email_to:
-            raise ConfigError("[email] enabled but no 'to' address given")
+        if self.email_enabled and not (
+            self.email_to or any(e["email"] for e in self.phone_book)
+        ):
+            raise ConfigError(
+                "[email] enabled but neither 'to' nor any 'email' in the phone book"
+            )
         if self.sms_enabled and not (self.sms_to or self.phone_book):
             raise ConfigError(
                 "[sms] enabled but neither 'to' nor a non-empty 'phones_file' was given"
@@ -136,8 +140,27 @@ class Settings:
             if not entry.get("enabled", True):
                 LOG.info("phone book entry for %s is disabled, skipping", entry["name"])
                 continue
+            if not entry["phone"]:
+                continue
             gateway = entry.get("gateway") or self.sms_gateway
             out.append((f"{entry['phone']}@{gateway}", entry["name"]))
+        return out
+
+    def email_recipients(self, device_id: str | None) -> list[tuple[str, str]]:
+        """Addresses to mail for this device, as (address, person) pairs.
+
+        Same shape as sms_recipients: literal [email] to= addresses always
+        apply, phone-book entries apply only when their deviceId matches.
+        """
+        out = [(addr, "") for addr in self.email_to]
+        if not device_id:
+            return out
+        for entry in self.phone_book:
+            if entry["deviceId"].casefold() != device_id.casefold():
+                continue
+            if not entry.get("enabled", True) or not entry["email"]:
+                continue
+            out.append((entry["email"], entry["name"]))
         return out
 
     @staticmethod
@@ -174,24 +197,40 @@ def _load_phone_book(path: Path) -> list[dict]:
         where = f"{path} entry {index}"
         if not isinstance(item, dict):
             raise ConfigError(f"{where}: expected an object, got {type(item).__name__}")
-        for key in ("deviceId", "name", "phone"):
+        for key in ("deviceId", "name"):
             if not str(item.get(key, "")).strip():
                 raise ConfigError(f"{where}: missing or empty {key!r}")
-        digits = "".join(ch for ch in str(item["phone"]) if ch.isdigit())
-        # Accept a leading US country code but store the 10-digit form, which
-        # is what the carrier gateways expect.
-        if len(digits) == 11 and digits.startswith("1"):
-            digits = digits[1:]
-        if len(digits) != 10:
-            raise ConfigError(
-                f"{where}: {item['phone']!r} is not a 10-digit US number "
-                f"(got {len(digits)} digits)"
-            )
+
+        raw_phone = str(item.get("phone", "")).strip()
+        raw_email = str(item.get("email", "")).strip()
+        # One or the other is enough: someone may want texts only, or mail
+        # only. Neither means the entry can never do anything, which is a
+        # mistake rather than a preference.
+        if not raw_phone and not raw_email:
+            raise ConfigError(f"{where}: needs at least one of 'phone' or 'email'")
+
+        digits = ""
+        if raw_phone:
+            digits = "".join(ch for ch in raw_phone if ch.isdigit())
+            # Accept a leading US country code but store the 10-digit form,
+            # which is what the carrier gateways expect.
+            if len(digits) == 11 and digits.startswith("1"):
+                digits = digits[1:]
+            if len(digits) != 10:
+                raise ConfigError(
+                    f"{where}: {raw_phone!r} is not a 10-digit US number "
+                    f"(got {len(digits)} digits)"
+                )
+        if raw_email and ("@" not in raw_email or raw_email.startswith("@")
+                          or raw_email.endswith("@")):
+            raise ConfigError(f"{where}: {raw_email!r} does not look like an address")
+
         entries.append(
             {
                 "deviceId": str(item["deviceId"]).strip(),
                 "name": str(item["name"]).strip(),
                 "phone": digits,
+                "email": raw_email,
                 "gateway": str(item.get("gateway", "")).strip(),
                 "enabled": bool(item.get("enabled", True)),
             }
@@ -260,19 +299,35 @@ class Notifier:
     def email(self, record: dict) -> bool:
         if not self.s.email_enabled:
             return False
-        msg = EmailMessage()
-        msg["To"] = ", ".join(self.s.email_to)
-        if self.s.email_from:
-            msg["From"] = self.s.email_from
+        recipients = self.s.email_recipients(self.device_id)
+        if not recipients:
+            LOG.warning(
+                "email enabled but no recipient matched device id %r", self.device_id
+            )
+            return False
+
         who = record.get("from_long") or record.get("from_id") or "unknown"
-        msg["Subject"] = _render(
+        subject = _render(
             self.s.email_subject_template,
             record,
             prefix=self.s.email_subject_prefix,
             who=who,
         ).strip()
-        msg.set_content(_format_email_body(record))
-        return self._sendmail(msg, "email")
+        body = _format_email_body(record)
+
+        any_sent = False
+        # One message per recipient, matching the SMS path: a single bad
+        # address then cannot suppress delivery to everyone else.
+        for address, person in recipients:
+            msg = EmailMessage()
+            msg["To"] = address
+            if self.s.email_from:
+                msg["From"] = self.s.email_from
+            msg["Subject"] = subject
+            msg.set_content(body)
+            if self._sendmail(msg, f"email[{person or address}]"):
+                any_sent = True
+        return any_sent
 
     def sms(self, record: dict) -> bool:
         if not self.s.sms_enabled:
