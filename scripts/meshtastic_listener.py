@@ -369,9 +369,9 @@ class Listener:
         accepted, why = self.accepts(record)
         record["accepted"] = accepted
         record["decision"] = why
-        self.append_ledger(record)
 
         if not accepted:
+            self.append_ledger(record)
             LOG.info("recorded but not forwarded (%s)", why)
             return
 
@@ -381,8 +381,14 @@ class Listener:
             record.get("channel_name") or record.get("channel"),
             len(record["text"]),
         )
-        record["email_sent"] = self.notifier.email(record)
-        record["sms_sent"] = self.notifier.sms(record)
+        # The ledger row is written after the notifications so it can record
+        # whether they succeeded, and in a finally so a failing notifier still
+        # leaves evidence that the message arrived.
+        try:
+            record["email_sent"] = self.notifier.email(record)
+            record["sms_sent"] = self.notifier.sms(record)
+        finally:
+            self.append_ledger(record)
 
     def on_connection_lost(self, *_args, **_kwargs) -> None:
         LOG.warning("connection to the radio was lost")
