@@ -88,9 +88,12 @@ gateway = msg.fi.google.com
 # Usually left empty; the phone book is the better place.
 to =
 
-# Left empty on purpose: several gateways prepend the subject to the message
-# body, which spends characters that are already scarce.
-subject =
+# Several gateways prepend the subject to the message body, so it costs
+# characters that are already scarce -- but an ABSENT Subject header is itself
+# a spam signal (SpamAssassin's MISSING_SUBJECT and friends), and a
+# "[Potential Spam]" tag is a subject rewrite, so a filter will invent one
+# anyway. Give it a short real subject and keep the body from repeating it.
+subject = FTG1 mesh
 
 # What the text message says. str.format over the same ledger fields as the
 # email subject. {text} is truncated to whatever room the rest of the template
