@@ -26,18 +26,21 @@ readonly LISTENER_PY="${SCRIPTS_DIR}/meshtastic_listener.py"
 
 usage() {
     cat <<USAGE
-usage: $(basename -- "$0") [run|self-test|check|tail] [options]
+usage: $(basename -- "$0") [run|self-test|check|tail|install-service] [options]
 
   run         hold the port open and forward messages (the default)
   self-test   send one test notification by email and SMS, then exit
   check       report the config, the port and whether anything holds it
   tail        follow the ledger, newest last
+  install-service  write a systemd unit with this checkout's real paths
 
 options:
   -c FILE     config file (default: ${DEFAULT_CONFIG})
   -d ID       device id for phone-book routing (self-test needs this)
   -n          dry run: log what would be sent, send nothing
   -v          verbose
+  -s          install-service: system unit (starts at boot, no lingering)
+              rather than a user unit
 
 The config file carries a phone number and an email address. Keep it under
 etc/secrets/, which is gitignored as a whole directory.
@@ -46,10 +49,11 @@ USAGE
 
 CONFIG="${DEFAULT_CONFIG}"
 ACTION='run'
+SYSTEM_UNIT=0
 declare -a PASSTHROUGH=()
 
 case "${1:-}" in
-    run | self-test | check | tail)
+    run | self-test | check | tail | install-service)
         ACTION="$1"
         shift
         ;;
@@ -59,12 +63,13 @@ case "${1:-}" in
         ;;
 esac
 
-while getopts ':c:d:nvh' opt; do
+while getopts ':c:d:nvsh' opt; do
     case "${opt}" in
         c) CONFIG="${OPTARG}" ;;
         d) PASSTHROUGH+=('--device-id' "${OPTARG}") ;;
         n) PASSTHROUGH+=('--dry-run') ;;
         v) PASSTHROUGH+=('--verbose') ;;
+        s) SYSTEM_UNIT=1 ;;
         h)
             usage
             exit 0
@@ -74,8 +79,10 @@ while getopts ':c:d:nvh' opt; do
     esac
 done
 
-[[ -r ${CONFIG} ]] || die "cannot read config: ${CONFIG}
+if [[ ${ACTION} != 'install-service' ]]; then
+    [[ -r ${CONFIG} ]] || die "cannot read config: ${CONFIG}
        Copy etc/listener.conf.example there and fill it in."
+fi
 
 # --- ledger path, read from the config so `tail` and `check` agree with the
 # --- daemon rather than guessing at it
@@ -88,6 +95,64 @@ config_port() {
     sed -nE 's/^[[:space:]]*port[[:space:]]*=[[:space:]]*(.+)$/\1/p' "${CONFIG}" |
         head -n 1
 }
+
+if [[ ${ACTION} == 'install-service' ]]; then
+    # Written rather than shipped verbatim, because the unit has to carry the
+    # absolute path of *this* checkout. A committed unit with someone else's
+    # home directory baked in is worse than no unit at all.
+    unit_body() {
+        cat <<UNIT
+[Unit]
+Description=Meshtastic listener for the attached radio
+Documentation=file://${PROJECT_DIR}/README.md
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+WorkingDirectory=${PROJECT_DIR}
+ExecStart=${SCRIPTS_DIR}/meshtastic-listener.sh run
+${1}
+# The board drops off the USB bus when it resets and returns a moment later.
+# Restart rather than calling that a failure; the listener also reconnects on
+# its own for as long as the process survives.
+Restart=always
+RestartSec=15
+
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=meshtastic-listener
+
+[Install]
+WantedBy=${2}
+UNIT
+    }
+
+    if [[ ${SYSTEM_UNIT} -eq 1 ]]; then
+        dest='/etc/systemd/system/meshtastic-listener.service'
+        # Runs as the invoking user, never root: the ledger lives in the
+        # checkout and root-owned files there break the next ordinary run.
+        # dialout is what grants the serial port.
+        body="$(unit_body "User=${USER}
+Group=$(id -gn)
+SupplementaryGroups=dialout" 'multi-user.target')"
+        printf '%s\n' "${body}" | sudo tee "${dest}" >/dev/null
+        sudo systemctl daemon-reload
+        ok "installed ${dest}"
+        info 'enable it with:  sudo systemctl enable --now meshtastic-listener'
+        info 'follow it with:  journalctl -u meshtastic-listener -f'
+    else
+        dest="${HOME}/.config/systemd/user/meshtastic-listener.service"
+        mkdir -p -- "$(dirname -- "${dest}")"
+        unit_body '' 'default.target' >"${dest}"
+        systemctl --user daemon-reload
+        ok "installed ${dest}"
+        info 'enable it with:  systemctl --user enable --now meshtastic-listener'
+        info "survive logout:  sudo loginctl enable-linger ${USER}"
+        info 'follow it with:  journalctl --user -u meshtastic-listener -f'
+    fi
+    exit 0
+fi
 
 if [[ ${ACTION} == 'tail' ]]; then
     LEDGER="$(ledger_path)"
