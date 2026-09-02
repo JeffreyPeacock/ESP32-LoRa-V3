@@ -419,7 +419,14 @@ unmessagable.
 
 NodeInfo goes out on `device.nodeInfoBroadcastSecs`, **default 10800 s (3
 hours)**, so two nodes flashed together may not be able to message each other
-for hours. Note what does *not* work as a shortcut: **`--set-owner` with the
+for hours. Once the exchange happens the DM works first time and is
+acknowledged; verified 2026-09-02, `Received an ACK.`
+
+**A PKI direct message travels on the primary channel regardless of
+`--ch-index`.** The test above was sent with `--ch-index 2` and arrived with
+`channel: 0`, `pki_encrypted: True`. The private channel protects broadcasts;
+DMs are protected by the key pair instead, so do not read `channel 0` on a
+received DM as a configuration mistake. Note what does *not* work as a shortcut: **`--set-owner` with the
 values it already has writes nothing and broadcasts nothing.** It has to be a
 real change.
 
