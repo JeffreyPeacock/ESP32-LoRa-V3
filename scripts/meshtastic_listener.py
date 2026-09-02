@@ -27,6 +27,7 @@ import time
 from collections import deque
 from datetime import datetime, timezone
 from email.message import EmailMessage
+from email.utils import parseaddr
 from pathlib import Path
 
 LOG = logging.getLogger("listener")
@@ -226,9 +227,17 @@ class Notifier:
         if self.dry_run:
             LOG.info("dry-run: would send %s to %s", label, msg["To"])
             return True
+        # -f sets the envelope sender to match the From header. Without it the
+        # envelope carries the invoking unix user, and postfix rewrites the two
+        # through smtp_generic_maps independently -- so they arrive as
+        # different addresses, which reads as forgery to a spam filter.
+        argv = [str(self.s.sendmail), "-t", "-oi"]
+        sender = _address_only(msg["From"])
+        if sender:
+            argv += ["-f", sender]
         try:
             proc = subprocess.run(
-                [str(self.s.sendmail), "-t", "-oi"],
+                argv,
                 input=msg.as_bytes(),
                 capture_output=True,
                 timeout=60,
@@ -307,6 +316,14 @@ class Notifier:
         while self._sms_times and self._sms_times[0] < cutoff:
             self._sms_times.popleft()
         return len(self._sms_times) < self.s.sms_max_per_hour
+
+
+def _address_only(header) -> str:
+    """The bare address from a From header, dropping any display name."""
+    if not header:
+        return ""
+    _, address = parseaddr(str(header))
+    return address
 
 
 class _SafeFields(dict):

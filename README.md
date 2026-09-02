@@ -201,6 +201,20 @@ bare text — a typo should look wrong, not stop the listener.
 **Two things are decided outside this project.** Both surfaced on the first
 real SMS:
 
+- **The envelope sender must match the `From:` header.** The listener passes
+  `sendmail -f` for this. Without it the envelope carries the invoking unix
+  user, postfix rewrites envelope and header through `smtp_generic_maps`
+  independently, and the two arrive as different addresses — which reads as
+  forgery to a spam filter and breaks DMARC alignment.
+- **Pick a sender whose domain authorises the relay.** Check before choosing:
+
+  ```bash
+  dig +short TXT flagstafftechgroup.org | grep spf1   # v=spf1 include:wonkware.com -all
+  dig +short A mail.wonkware.com                      # must fall inside that
+  ```
+
+  A sender on a domain that does *not* list the relay fails SPF and scores
+  worse than an unbranded address would.
 - **The From address comes from postfix, not from `[sms] from`.**
   `smtp_generic_maps` rewrites the sender on the way out. A line like
   `@thishost  someone@example.com` in `/etc/postfix/generic` replaces whatever
