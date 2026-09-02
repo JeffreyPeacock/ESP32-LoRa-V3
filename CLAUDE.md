@@ -288,6 +288,36 @@ Two consequences:
   not isolation.** It stops decoding; it does not stop the energy, and CSMA
   still defers to it.
 
+## A stale Android bond makes the radio invisible, not just unpairable
+
+Cost real time on 2026-09-01. **Reflashing the board does not change its BLE
+address**, so a pairing Android made when the board ran RNode survives the
+change to Meshtastic — and Android keeps honouring it.
+
+The symptom is misleading: **the phone's scan does not list the device at all.**
+Android excludes already-bonded devices from discovery results, so it looks
+exactly like a radio that is not advertising. It is not a firmware fault and
+there is nothing to fix on the board.
+
+The tell is the asymmetry. Scan from a Linux host at the same moment and the
+device is plainly there:
+
+```bash
+meshtastic --ble-scan
+# Found: name='FTG2_ac5c' address='44:1B:F6:FA:AC:5D'
+```
+
+**Desktop sees it, phone does not → stale bond on the phone.** Fix it in
+Android's Bluetooth settings: forget the old entry, then pair from inside the
+Meshtastic app.
+
+Two things that do **not** help, both tried: power-cycling the radio, and
+rebooting the phone. The bond is on the phone and survives both.
+
+Note the address: BLE advertises on **MAC + 1** — `…AC:5D` where the WiFi MAC is
+`…AC:5C`. That is ordinary ESP32 behaviour, the peripherals get consecutive
+addresses. Do not read the mismatch as the wrong board.
+
 ## Reaching a headless node on WiFi
 
 WiFi and BLE are mutually exclusive on ESP32, so a node using its own WiFi is
