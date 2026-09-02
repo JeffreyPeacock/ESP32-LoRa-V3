@@ -182,6 +182,37 @@ outbound, and an SMS to a carrier gateway is just a short email to
 `<number>@<gateway>`, so there is no second set of credentials. Google Fi's
 gateway is `<10 digits>@msg.fi.google.com`.
 
+### What the message looks like, and what is not ours to decide
+
+The SMS body and the email subject are `str.format` templates over the ledger
+fields, so `{text}`, `{from_short}`, `{from_long}`, `{rx_snr}`, `{hops_away}`,
+`{channel_name}` and the rest are all available:
+
+```ini
+[sms]
+body_template = FTG1<-{from_short}: {text} ({rx_snr}dB)
+```
+
+`{text}` is truncated to whatever room the rest of the template leaves, so
+anything placed after it survives and the total lands on `max_chars`. An
+unknown field renders as `<name?>` and a malformed template falls back to the
+bare text — a typo should look wrong, not stop the listener.
+
+**Two things are decided outside this project.** Both surfaced on the first
+real SMS:
+
+- **The From address comes from postfix, not from `[sms] from`.**
+  `smtp_generic_maps` rewrites the sender on the way out. A line like
+  `@thishost  someone@example.com` in `/etc/postfix/generic` replaces whatever
+  the listener set. Change it with a *more specific* entry — a full address
+  beats a bare `@host` — then `postmap` it, and confirm the smarthost accepts
+  that sender for the authenticated account. Many relays refuse a sender they
+  do not own, so this needs the mail administrator, not just root.
+- **A `[Potential Spam]` subject tag is added upstream.** Nothing on the
+  sending host does it: `content_filter` is empty and no filter is running.
+  It comes from the relay or the receiving carrier. A real subject helps a
+  little; the actual fix is an allowlist wherever the tagging happens.
+
 Four behaviours are deliberate and worth knowing:
 
 - **Everything seen is recorded, forwarded or not**, with the reason in the
