@@ -568,6 +568,7 @@ docs/Reticulum-value-and-limits.md    what it is for, and what it will not do
 docs/aredn-as-a-transport.md          reference: AREDN, and why Part 97 rules it out here
 docs/config-tools.md                  GUI alternatives to the CLIs, and how to install each
 docs/raspberry-pi-deployment.md       moving the radio and listener to a Pi 4
+docs/handoff-mail-relay.md            outbound mail brief for whoever runs the relay
 docs/meshtastic-rf-survey.md          what was measured on the air around FTG1 (#3)
 etc/reticulum/          Reticulum config for FTG1, and its backups
 etc/secrets/            device config exports and anything else local — gitignored
