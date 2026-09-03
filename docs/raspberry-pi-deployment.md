@@ -49,7 +49,9 @@ one socket on the Pi and leave the radio in it.
 
 ### Mail is the real dependency, and it is not installed by default
 
-**Configure this first.** Nothing else can be validated without it: the
+**Configure this first.** [docs/handoff-mail-relay.md](handoff-mail-relay.md)
+is this section written as a standalone brief for whoever runs the mail, with
+no LoRa context needed. Nothing else can be validated without it: the
 listener's only outputs are email and SMS, and SMS is email. Get mail working
 on the Pi before the radio is even plugged in — `self-test` needs no radio, so
 mail can be proven on its own.
