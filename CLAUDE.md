@@ -128,7 +128,8 @@ assumption that no position was being sent.
 
 ## There is an active mesh in range of FTG1 (#3)
 
-**FTG1 is not isolated.** 108 nodes in the ledger, ~7 within 15 mi, typical SNR
+**FTG1 is not isolated.** 127 nodes in the ledger as of 2026-09-04 — 79 live in
+the NodeDB and 48 retained from earlier scans — 11 within 15 mi, typical SNR
 −5 to −6 dB. Real RF peers exist to test against, so link behaviour never had to
 wait on SJC. Detail — peer table, traceroutes, terrain maths, the node clock —
 is in `docs/meshtastic-rf-survey.md`.
@@ -164,9 +165,19 @@ the WiFi PSK, and `security.privateKey`, the node's PKI identity.
 
 ## Normal operating mode is BLE, no network
 
-The default and expected state of FTG1 is **Bluetooth to a phone, LoRa to the
-local mesh, WiFi off, MQTT off**. Nothing about ordinary Meshtastic use needs an
-internet connection — the mesh found in #3 runs entirely over RF.
+The default and expected state of a node here is **Bluetooth to a phone, LoRa to
+the local mesh, WiFi off, MQTT off**. Nothing about ordinary Meshtastic use needs
+an internet connection — the mesh found in #3 runs entirely over RF.
+
+**Current experiment, 2026-09-02, expected to be temporary:** FTG1 is instead
+hosted over USB by the message listener, and FTG2 is the phone-hosted one.
+Treat that as the arrangement of the moment rather than the settled shape;
+FTG1 is intended to move to a Raspberry Pi (see
+`docs/raspberry-pi-deployment.md`), which changes the host again.
+
+**The serial port serves one process at a time.** While the listener runs,
+`meshtastic --port` on FTG1 fails with a silent non-response rather than an
+error. Stop it first: `systemctl --user stop meshtastic-listener`.
 
 WiFi and MQTT get switched on for bridging work and switched back off. If a
 session leaves the board on WiFi, the phone cannot pair, because BLE is disabled
@@ -318,6 +329,33 @@ Note the address: BLE advertises on **MAC + 1** — `…AC:5D` where the WiFi MA
 `…AC:5C`. That is ordinary ESP32 behaviour, the peripherals get consecutive
 addresses. Do not read the mismatch as the wrong board.
 
+## A channel is not a direct message, and the app hides the difference
+
+Cost a wrong turn on 2026-09-02. In the Meshtastic app a conversation is keyed
+`ContactKey("$channel$destination")`, so what looks like one list is two kinds
+of thing:
+
+| Shown as | Key | Goes to |
+|---|---|---|
+| LongFast | `0^all` | everyone in range |
+| mqtt | `1^all` | everyone in range |
+| ftg-priv | `2^all` | everyone holding that key |
+| **FTG1** | `8!f6fb8e00` | **that node only** |
+
+`8` is `PKC_CHANNEL_INDEX`, a sentinel for public-key encryption — the radio has
+no channel 8. The app's own test is
+`isDirectMessage = channel == null || channel == PKC_CHANNEL_INDEX`.
+
+**Picking a channel sends a broadcast, however private the channel is.**
+`ftg-priv` keeps strangers from reading it, but it is still addressed to `^all`,
+so the listener running `dm_only = true` records it and does not forward it. To
+reach one node, select the *node* from the contact list, not a channel.
+
+**The app connects to one radio at a time.** It stores a single `deviceAddress`
+and `setDeviceAddress` replaces it. It does not forget the others — the picker
+is built from Android's bonded devices filtered to Meshtastic names — so
+switching is choosing a different entry, not re-pairing.
+
 ## Reaching a headless node on WiFi
 
 WiFi and BLE are mutually exclusive on ESP32, so a node using its own WiFi is
@@ -429,6 +467,20 @@ DMs are protected by the key pair instead, so do not read `channel 0` on a
 received DM as a configuration mistake. Note what does *not* work as a shortcut: **`--set-owner` with the
 values it already has writes nothing and broadcasts nothing.** It has to be a
 real change.
+
+### After an esptool command the board may not answer Meshtastic
+
+Seen 2026-09-04. `heltec-dev.sh chip-id` runs esptool's **stub flasher**, and
+although it prints `Hard resetting via RTS pin` the board can be left in a state
+where `meshtastic --info` only times out. Waiting does not fix it. An explicit
+stubless reset does:
+
+```bash
+esptool --port <port> --after hard-reset --no-stub read-mac
+```
+
+Then give it ~20 s before talking to it. Read the MAC that way when the board is
+already running application firmware — it identifies the board without the stub.
 
 ## Power draw, from the datasheet (not estimated)
 
