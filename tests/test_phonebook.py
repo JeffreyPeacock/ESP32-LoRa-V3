@@ -75,6 +75,37 @@ for good, why in [
     finally:
         os.unlink(p2)
 
+print("\ncarrier resolution:")
+for nm in ("Google.fi", "at&t", "T-Mobile", "Verizon"):
+    p2 = book([{"deviceId": "D", "name": "N", "phone": "5555550123", "carrier": nm}])
+    try:
+        e = ML._load_phone_book(p2)[0]
+        print(f"  {nm!r:12} -> {ML._resolve_gateway(e, 'fallback')}")
+    finally:
+        os.unlink(p2)
+
+print("\ncarrier errors (each must raise):")
+for bad, why in [
+    ([{"deviceId": "D", "name": "N", "phone": "5555550123", "carrier": "Sprint"}],
+     "unknown carrier"),
+    ([{"deviceId": "D", "name": "N", "phone": "5555550123", "carrier": "Google Voice"}],
+     "carrier with no gateway"),
+]:
+    p2 = book(bad)
+    try:
+        ML._load_phone_book(p2)
+        print(f"  NOT RAISED for {why} <-- BUG")
+    except ML.ConfigError as exc:
+        print(f"  ok  {why:24} -> {str(exc).split(': ', 1)[1][:46]}")
+    finally:
+        os.unlink(p2)
+
+p2 = book([{"deviceId": "D", "name": "N", "phone": "5555550123",
+            "carrier": "AT&T", "gateway": "literal.example"}])
+e = ML._load_phone_book(p2)[0]
+print(f"\n  explicit gateway beats carrier -> {ML._resolve_gateway(e, 'fallback')}")
+os.unlink(p2)
+
 print("\nnormalisation:")
 p = book([{"deviceId": "D", "name": "N", "phone": "+1 (720) 555-0123"}])
 e = ML._load_phone_book(p)[0]

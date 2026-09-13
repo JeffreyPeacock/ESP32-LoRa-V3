@@ -37,9 +37,21 @@ reconnect_secs = 15
 # radio can notify entirely different people:
 #
 #   [
-#     {"deviceId": "FTG1", "name": "Jeffrey",
-#      "phone": "5555550123", "email": "someone@example.com"}
+#     {"deviceId": "FTG1", "name": "Jeffrey", "phone": "5555550123",
+#      "carrier": "Google.fi", "email": "someone@example.com"},
+#     {"deviceId": "FTG1", "name": "Hugo", "phone": "5555550124",
+#      "carrier": "AT&T"}
 #   ]
+#
+# "carrier" names the network and is resolved to that carrier's SMS gateway,
+# so each person can be on a different one. Matching ignores case and
+# punctuation, so "AT&T", "at&t" and "att" are the same. Known names:
+# googlefi/fi, att, tmobile, mint, metro, verizon, visible, uscellular,
+# cricket, boost, consumercellular. An unrecognised name is rejected at
+# startup rather than quietly falling back to the default gateway, because
+# texting an AT&T number through Google Fi's gateway is discarded in silence
+# and looks exactly like success. For anything not listed, give a literal
+# "gateway" domain instead, which wins over "carrier" when both are present.
 #
 # deviceId is matched against [listen] device_id, or against the radio's own
 # short name when that is blank. An entry needs at least one of "phone" or
@@ -96,8 +108,7 @@ enabled = true
 from = ftg1@localhost
 
 
-# Appended to a bare number from the phone book. Override per entry for a
-# recipient on a different carrier.
+# Fallback gateway for an entry that gives neither "carrier" nor "gateway".
 gateway = msg.fi.google.com
 
 # Literal addresses, applied for every device regardless of the phone book.

@@ -166,10 +166,24 @@ file = etc/secrets/sms-phones.json
 
 ```json
 [
-  { "deviceId": "FTG1", "name": "Jeffrey",
-    "phone": "5555550123", "email": "someone@example.com" }
+  { "deviceId": "FTG1", "name": "Jeffrey", "phone": "5555550123",
+    "carrier": "Google.fi", "email": "someone@example.com" },
+  { "deviceId": "FTG1", "name": "Hugo", "phone": "5555550124", "carrier": "AT&T" }
 ]
 ```
+
+**`carrier` names the network** and resolves to that carrier's SMS gateway, so
+each person can be on a different one. Matching ignores case and punctuation —
+`AT&T`, `at&t` and `att` are the same. Known: `googlefi`/`fi`, `att`,
+`tmobile`, `mint`, `metro`, `verizon`, `visible`, `uscellular`, `cricket`,
+`boost`, `consumercellular`. Anything else needs a literal `gateway` domain,
+which wins when both are given.
+
+**An unrecognised carrier is rejected at startup**, not quietly sent to the
+default gateway. Texting an AT&T number through Google Fi's gateway is
+discarded in silence and is indistinguishable from success. Only the Google Fi
+address is confirmed by a message reaching a handset; treat a first send to any
+other carrier as a test.
 
 An entry needs at least one of `phone` or `email` — neither is a mistake, not a
 preference. Leave `[email] to` and `[sms] to` empty to route purely by device;

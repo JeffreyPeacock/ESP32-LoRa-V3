@@ -45,6 +45,37 @@ class ConfigError(RuntimeError):
     pass
 
 
+# Carrier name -> SMS-over-email gateway domain. Keys are matched loosely, so
+# "Google.fi", "google fi" and "GOOGLEFI" all resolve; see _carrier_key().
+#
+# Only the Google Fi entry is verified by a message actually arriving on a
+# handset. The rest are the carriers' published addresses and are unproven
+# here -- and a carrier gateway discards mail for an address it does not
+# recognise without reporting anything, so treat a first send to any new
+# carrier as a test, not as working.
+CARRIER_GATEWAYS = {
+    "googlefi": "msg.fi.google.com",  # verified 2026-09-02
+    "fi": "msg.fi.google.com",
+    "att": "txt.att.net",
+    "tmobile": "tmomail.net",
+    "mint": "tmomail.net",           # Mint resells T-Mobile
+    "metro": "mymetropcs.com",
+    "verizon": "vtext.com",
+    "visible": "vtext.com",          # Visible resells Verizon
+    "uscellular": "email.uscc.net",
+    "cricket": "sms.cricketwireless.net",
+    "boost": "sms.myboostmobile.com",
+    "consumercellular": "mailmymobile.net",
+    "googlevoice": "",               # no gateway; see _resolve_gateway()
+}
+
+
+def _carrier_key(name: str) -> str:
+    """Normalise a carrier name for lookup: case, punctuation and spacing all
+    vary in hand-written config ("AT&T", "at&t", "Google.fi")."""
+    return "".join(ch for ch in name.lower() if ch.isalnum())
+
+
 # --- configuration -----------------------------------------------------------
 
 
@@ -147,7 +178,7 @@ class Settings:
                 continue
             if not entry["phone"]:
                 continue
-            gateway = entry.get("gateway") or self.sms_gateway
+            gateway = _resolve_gateway(entry, self.sms_gateway)
             out.append((f"{entry['phone']}@{gateway}", entry["name"]))
         return out
 
@@ -230,6 +261,29 @@ def _load_phone_book(path: Path) -> list[dict]:
                           or raw_email.endswith("@")):
             raise ConfigError(f"{where}: {raw_email!r} does not look like an address")
 
+        # "carrier" is a name resolved through CARRIER_GATEWAYS; "gateway" is a
+        # literal domain and wins if both are given. An unrecognised carrier is
+        # fatal rather than falling back to the default gateway: sending an
+        # AT&T number to Google Fi's gateway is silently discarded, which looks
+        # exactly like a delivered message.
+        carrier = str(item.get("carrier", "")).strip()
+        if carrier and _carrier_key(carrier) not in CARRIER_GATEWAYS:
+            known = ", ".join(sorted(CARRIER_GATEWAYS))
+            raise ConfigError(
+                f"{where}: carrier {carrier!r} is not recognised. Known: {known}. "
+                f"For anything else give a literal \"gateway\" domain instead."
+            )
+        if carrier and _carrier_key(carrier) == "googlevoice":
+            raise ConfigError(
+                f"{where}: Google Voice has no email-to-SMS gateway. Use the "
+                f"underlying carrier, or give \"email\" only."
+            )
+        if raw_phone and not carrier and not str(item.get("gateway", "")).strip():
+            LOG.info(
+                "%s: no carrier or gateway, using the [sms] default for %s",
+                where, item["name"],
+            )
+
         entries.append(
             {
                 "deviceId": str(item["deviceId"]).strip(),
@@ -237,10 +291,23 @@ def _load_phone_book(path: Path) -> list[dict]:
                 "phone": digits,
                 "email": raw_email,
                 "gateway": str(item.get("gateway", "")).strip(),
+                "carrier": carrier,
                 "enabled": bool(item.get("enabled", True)),
             }
         )
     return entries
+
+
+def _resolve_gateway(entry: dict, default: str) -> str:
+    """Gateway domain for one entry: explicit domain, then carrier name, then
+    the configured default."""
+    if entry.get("gateway"):
+        return entry["gateway"]
+    carrier = entry.get("carrier", "")
+    if carrier:
+        # Validated at load time, so a missing key here is a bug, not bad input.
+        return CARRIER_GATEWAYS[_carrier_key(carrier)]
+    return default
 
 
 def _split_list(raw: str) -> list[str]:
