@@ -165,8 +165,25 @@ side:
   application was not passing `-f`. It does now.
 - the messages carried no `Subject:` header at all. They do now.
 
-The tag survived both, so whatever is adding it is on the relay or at the
-receiving carrier. If `mail.wonkware.com` runs a content filter, an allowlist
+The tag survived both. A third cause has since been found by DNS inspection:
+
+**Neither domain publishes a DKIM key.** Probed 2026-09-13 across 17
+selector/domain combinations (`wonkware`, `default`, `mail`, `dkim`, `mx`,
+`smtp`, `selector1`, `selector2`, `s1`, `k1`) on `wonkware.com` and
+`flagstafftechgroup.org` — no record at any of them, with a known-nonexistent
+selector used as a control to confirm the query could distinguish absence from
+failure. Selectors are arbitrary and cannot be enumerated from DNS, so this is
+strong evidence rather than proof; the `DKIM-Signature` header on a received
+message settles it.
+
+That matters more than it looks. DMARC currently passes on SPF alignment alone,
+which satisfies the policy — but large receivers weight a valid DKIM signature
+heavily for sender reputation, and an unsigned, low-volume, automated message
+from an unfamiliar domain is close to the worst-scoring shape there is.
+**Enabling DKIM signing on the relay (OpenDKIM) and publishing the selector for
+both domains is the most likely single fix**, and it is a relay-side change.
+
+Whatever is adding the tag is on the relay or at the receiving carrier. If `mail.wonkware.com` runs a content filter, an allowlist
 entry for `ftg1@flagstafftechgroup.org` is likely the real fix — automated
 notifications from a new sender are close to unfixable by message content
 alone.
