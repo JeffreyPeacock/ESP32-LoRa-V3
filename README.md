@@ -77,6 +77,35 @@ rather than one per project. Anything checking for the build toolchain must look
 for `pio` on `PATH`, not inside the virtualenv. Compiling firmware needs it;
 configuring a radio does not.
 
+### Three environments, kept separate
+
+Three environments with distinct jobs. Do not merge them.
+
+| Path | What | Provides |
+|---|---|---|
+| `~/.pyenv/versions/meshtastic` | pyenv virtualenv, pinned by `.python-version` | `meshtastic` CLI, `esptool`, `python` |
+| `~/.platformio` | **not** a venv — PlatformIO's data dir | `platforms/`, `packages/` (toolchains), `penv/` |
+| `~/.local/bin/pio` | symlink into `~/.platformio/penv/bin` | `pio` on PATH everywhere |
+
+`pio` deliberately lives **outside** the project virtualenv so every embedded
+project on the machine shares one PlatformIO install. Code that checks for the
+toolchain must look for `pio` on PATH, not inside the venv.
+
+`scripts/install-toolchain.sh` reproduces all of this on a fresh machine.
+
+**pyenv is this machine's choice, not a project requirement.** The scripts
+resolve the interpreter through `resolve_venv_bin()` in
+`scripts/lib/heltec-common.sh`, which tries `$HELTEC_VENV`, then `.venv/` in the
+checkout, then `$VIRTUAL_ENV`, then pyenv — first one with a `python` wins, and
+a candidate missing the requested tool is skipped rather than fatal. A
+contributor can `python3 -m venv .venv && .venv/bin/pip install meshtastic
+esptool` and never install pyenv. Do not reintroduce a hard-coded
+`~/.pyenv/versions/meshtastic` path; `peers-report.sh` had one and it was the
+only thing standing between a new developer and a working checkout.
+
+This was recorded in `CLAUDE.md` until 2026-09-23 and moved here, because it
+is orientation a developer arriving cold wants rather than a finding.
+
 ## Scripts
 
 ### `scripts/install-toolchain.sh` — run once, as yourself
@@ -570,6 +599,7 @@ docs/Reticulum-value-and-limits.md    what it is for, and what it will not do
 docs/aredn-as-a-transport.md          reference: AREDN, and why Part 97 rules it out here
 docs/config-tools.md                  GUI alternatives to the CLIs, and how to install each
 docs/raspberry-pi-deployment.md       moving the radio and listener to a Pi 4
+docs/wifi-and-headless-access.md      reaching a node over WiFi, and what WiFi costs
 docs/handoff-mail-relay.md            outbound mail brief for whoever runs the relay
 docs/meshtastic-rf-survey.md          what was measured on the air around FTG1 (#3)
 etc/reticulum/          Reticulum config for FTG1, and its backups

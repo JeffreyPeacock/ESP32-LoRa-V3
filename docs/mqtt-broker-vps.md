@@ -282,3 +282,28 @@ failure rather than a clear error.
 - **mosquitto 2.x defaults to localhost-only and denies anonymous.** It needs
   `listener 1883 0.0.0.0` and `allow_anonymous true` in
   `/etc/mosquitto/conf.d/`.
+
+## The internet-to-mesh injection that was proven under #7
+
+Moved from `CLAUDE.md` on 2026-09-23. It is a recipe for a one-time proof
+rather than a fact a session needs loaded every time. The finding it proves,
+that downlink needs the node's own network, stays in `CLAUDE.md`.
+
+The working injection, verified in the serial log:
+
+```
+[mqtt] JSON payload FTG1 injection proof, length 20
+[mqtt] handleReceived(LOCAL) (... fr=0xf6fb8e00 ... Portnum=1)
+[mqtt] Expand short PSK #1 ... Use AES128 key!
+[RadioIf] Started Tx (... encrypted len=42)
+[RadioIf] Completed sending
+```
+
+Requirements, all of them mandatory:
+
+- a channel named **literally `mqtt`** with `downlink_enabled` (the name is the
+  subscription trigger), reboot after adding it
+- `mqtt.json_enabled = true`
+- publish to `msh/US/2/json/mqtt/` as
+  `{"from": <decimal node num>, "type": "sendtext", "payload": "..."}`
+- FTG1's node num is **4143681024** (`!f6fb8e00` in hex)

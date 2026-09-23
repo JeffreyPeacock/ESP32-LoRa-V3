@@ -5,27 +5,19 @@ establish and are easy to get wrong from memory or from generic documentation.
 
 ## What this project is
 
-A Heltec WiFi LoRa 32 V3 (ESP32-S3 + SX1262) at **FTG1**, intended to exchange text
-messages with radios at **SJC** and **SNA**. The three sites are referred to by
-the nearest airport ident throughout; they are hundreds of km apart, in Arizona
-and California.
+A Heltec WiFi LoRa 32 V3 (ESP32-S3 + SX1262), **FTG1**, intended to exchange
+text messages with radios at **SJC** and **SNA**, hundreds of km away. Sites are
+named by the nearest airport ident.
 
-Two constraints shape everything:
+Two constraints shape everything. **Only FTG1 is ours**, so prefer work that can
+be completed and verified solo. And **a backbone is required between sites**:
+Meshtastic caps the hop limit at 7 and each hop is a few km, so the 900 km gap
+cannot be closed with more LoRa hops. Meshtastic bridges meshes with MQTT, which
+needs IP reachability between gateways; what carries that IP is a free choice.
 
-- **Only FTG1 is under our control.** The other two belong to other people who
-  may not be reachable. Prefer work that can be completed and verified solo.
-- **A backbone is required between sites.** Meshtastic caps hop limit at 7
-  (default 3) and each hop is one RF link of a few km; FTG1 to SJC is ~900 km.
-  The gap cannot be closed with more LoRa hops. Meshtastic bridges meshes with
-  MQTT, which needs IP reachability between gateways — the transport under that
-  IP is a free choice (public internet, VPN, cellular, ham/AREDN).
-
-**Current direction:** Meshtastic first, to learn the hardware and find out
-whether anyone else is on the air within range of FTG1. Reticulum/RNode is the
-likely end state, because it is an actually routed hybrid — transport nodes
-with path tables, transport-agnostic interfaces, and LXMF propagation nodes
-that hold messages for offline recipients. Meshtastic has none of those: its
-MQTT bridge glues two flood domains together and queues nothing.
+**Current direction:** Meshtastic. Since 2026-09-22 FTG1 also feeds a public
+meshview site from pi4. Reticulum is the likely long-term end state, because it
+routes rather than floods and holds messages for offline nodes, but it is paused.
 
 ## Hardware facts
 
@@ -217,24 +209,9 @@ must have its own WiFi or Ethernet. A phone-proxied node can send outward but
 cannot be reached from another site, which is the half that matters for
 receiving. This governs #9 and #10.
 
-The working injection, verified in the serial log:
+The full injection recipe, with the verified serial log, is in
+`docs/mqtt-broker-vps.md`.
 
-```
-[mqtt] JSON payload FTG1 injection proof, length 20
-[mqtt] handleReceived(LOCAL) (... fr=0xf6fb8e00 ... Portnum=1)
-[mqtt] Expand short PSK #1 ... Use AES128 key!
-[RadioIf] Started Tx (... encrypted len=42)
-[RadioIf] Completed sending
-```
-
-Requirements, all of them mandatory:
-
-- a channel named **literally `mqtt`** with `downlink_enabled` (the name is the
-  subscription trigger), reboot after adding it
-- `mqtt.json_enabled = true`
-- publish to `msh/US/2/json/mqtt/` as
-  `{"from": <decimal node num>, "type": "sendtext", "payload": "..."}`
-- FTG1's node num is **4143681024** (`!f6fb8e00` in hex)
 
 Keep `downlink_enabled` **off** on the primary channel. Downlink there would
 rebroadcast public-internet traffic onto the shared local mesh. It belongs only
@@ -246,26 +223,19 @@ anonymous-auth trap, mosquitto's localhost default — are in
 
 ## The diagnostic firmware is deaf to the mesh
 
-`src/main.cpp` sets `RADIOLIB_SX126X_SYNC_WORD_PRIVATE` (0x12) at SF9/BW125.
-Meshtastic uses a different sync word and SF11/BW250. **The SX1262 only raises a
-receive interrupt for a matching sync word and modulation**, so the diagnostic
-firmware cannot hear a single packet of the 115-node mesh around it. That is
-correct behaviour, not a fault — do not go hunting for a broken radio.
+`src/main.cpp` uses the private sync word at SF9/BW125; Meshtastic uses a
+different sync word at SF11/BW250. **The SX1262 raises a receive interrupt only
+for a matching sync word and modulation**, so the diagnostic firmware cannot
+hear a single mesh packet. That is correct behaviour, not a broken radio.
 
-The same mechanism is why a Meshtastic node repeats nothing but Meshtastic:
-
-- **What it can hear** is a hardware filter — sync word, SF, BW, CR, frequency.
-  LoRaWAN uses sync word 0x34 and SF7–SF10 at 125/500 kHz, so it is rejected in
-  the modem before firmware sees a byte.
-- **What it forwards** is firmware — hop limit, dedup, `rebroadcastMode`.
-
-With `rebroadcastMode: ALL` (our default) a node relays packets on channels it
-**cannot decrypt**. That is how a shared LongFast carrier serves everyone's
-private channels — and why strangers' radios carry our `mqtt` channel traffic.
-
-Repeating is not a property of the radio. Our `CLIENT` node already relays for
-others; `ROUTER` mainly means well-sited infrastructure that rebroadcasts
-promptly.
+The same mechanism explains what a node repeats. **What it can hear is a
+hardware filter** — sync word, SF, BW, CR, frequency — so LoRaWAN is rejected in
+the modem before firmware sees a byte. **What it forwards is firmware** — hop
+limit, dedup, `rebroadcastMode`. With `rebroadcastMode: ALL` a node relays
+packets on channels it **cannot decrypt**, which is how a shared LongFast
+carrier serves everyone's private channels, and why strangers' radios carry our
+traffic. Repeating is not a property of the radio: our `CLIENT` node already
+relays for others, and `ROUTER` mainly means well-sited infrastructure.
 
 ### Sync words in use here
 
@@ -399,33 +369,11 @@ CLI's actual wording for any key ending in `password`, `psk`, `private_key` or
 
 The same applies to `--info`, which prints channel PSKs as `"psk": "<base64>"`.
 
-## Reaching a headless node on WiFi
+## Reaching a node over WiFi
 
-WiFi and BLE are mutually exclusive on ESP32, so a node using its own WiFi is
-unreachable over Bluetooth. It is not unreachable in general — it serves three
-interfaces on the LAN:
-
-| Port | What | Use |
-|---|---|---|
-| 4403 | Meshtastic API | **Add as a "network device" in the phone app** — full messaging |
-| 80/443 | built-in web UI | browser |
-| — | — | `meshtastic --host <ip>` instead of `--port /dev/ttyUSB0` |
-
-The app's "add a network device" feature expects a **radio** on 4403. Pointing
-it at an MQTT broker on 1883 makes it send Meshtastic stream framing to the
-broker, which logs `Invalid remaining length bytes:0x94949494` — `0x94` is the
-Meshtastic start byte. That is a wrong-address symptom, not a broker fault.
-
-The node's address comes from DHCP, so set a reservation on the router before
-depending on it.
-
-### WiFi failure codes worth recognising
-
-`Reason: 15 - 4WAY_HANDSHAKE_TIMEOUT`, looping every ~8 s, means the **PSK is
-wrong** — the node found the AP and failed authentication. It is not a band or
-SSID problem. Read it with a raw serial capture; the protobuf API hides these
-logs. Note the ESP32-S3 is **2.4 GHz only**, so also confirm the SSID exists on
-2.4 GHz.
+Only relevant when a node runs its own WiFi, which FTG1 does not. WiFi and BLE
+are mutually exclusive on ESP32. The ports, the phone's network-device path and
+the WiFi failure codes are in `docs/wifi-and-headless-access.md`.
 
 ## Which firmware is on the board
 
@@ -478,38 +426,33 @@ metadata before flashing.
 
 ## A direct message needs the recipient's public key, or it never transmits
 
-Proven on the bench 2026-09-01 with two freshly flashed nodes. **Broadcasts
-work immediately; direct messages do not.** Sending a DM to a node whose public
-key the sender does not hold fails *locally* -- the packet is never put on air:
+Proven on the bench 2026-09-01. **Broadcasts work immediately; direct messages
+do not.** Sending a DM to a node whose public key the sender lacks fails
+*locally* — the packet never goes on air:
 
 ```
-$ meshtastic --port <B> --dest '!f6fb8e00' --sendtext "..." --ack
+$ meshtastic --dest '!f6fb8e00' --sendtext "..." --ack
 Received a NAK, error reason: PKI_SEND_FAIL_PUBLIC_KEY
 ```
 
-The same NAK appears on the primary channel and on a private channel, so it is
-not a channel-key problem. **Meshtastic 2.7 does not fall back to channel-PSK
-encryption for a DM.** Confirmed from the receiving side too: `--listen` on the
-target showed the control broadcast arriving and no trace of the DM.
+The same NAK appears on the primary channel and on a private one, so it is not a
+channel-key problem: **2.7 does not fall back to channel-PSK encryption for a
+DM.** Confirmed from the receiving side too, where `--listen` showed a control
+broadcast arriving and no trace of the DM.
 
-The key travels in **NodeInfo**, and a node hearing only a text packet learns
-the sender's node *number* but not its name or key -- the receiver's table
-showed `Meshtastic 8e00` with `publicKey` empty while already reporting
-`snr=5.75, hops=0`. So a node can be one hop away, plainly audible, and still
-unmessagable.
-
-NodeInfo goes out on `device.nodeInfoBroadcastSecs`, **default 10800 s (3
-hours)**, so two nodes flashed together may not be able to message each other
-for hours. Once the exchange happens the DM works first time and is
-acknowledged; verified 2026-09-02, `Received an ACK.`
+The key travels in **NodeInfo**. A node that has heard only a text packet knows
+the sender's node *number* but not its name or key, so it can be one hop away,
+plainly audible, and still unmessagable. NodeInfo goes out on
+`device.nodeInfoBroadcastSecs`, **default 10800 s (3 hours)**, so two nodes
+flashed together may not be able to message each other for hours. Once exchanged
+the DM works first time and is acknowledged.
 
 **A PKI direct message travels on the primary channel regardless of
-`--ch-index`.** The test above was sent with `--ch-index 2` and arrived with
-`channel: 0`, `pki_encrypted: True`. The private channel protects broadcasts;
-DMs are protected by the key pair instead, so do not read `channel 0` on a
-received DM as a configuration mistake. Note what does *not* work as a shortcut: **`--set-owner` with the
-values it already has writes nothing and broadcasts nothing.** It has to be a
-real change.
+`--ch-index`.** Sent with `--ch-index 2`, it arrived as `channel: 0`,
+`pki_encrypted: True`. Do not read that as a misconfiguration.
+
+`--set-owner` with the values it already holds writes nothing and broadcasts
+nothing, so it is not a shortcut for forcing NodeInfo out.
 
 ### After an esptool command the board may not answer Meshtastic
 
@@ -640,29 +583,13 @@ briefly when they reset. A vanished `ttyACM` is usually a reset, not a fault.
 
 ## Toolchain layout
 
-Three environments with distinct jobs. Do not merge them.
-
-| Path | What | Provides |
-|---|---|---|
-| `~/.pyenv/versions/meshtastic` | pyenv virtualenv, pinned by `.python-version` | `meshtastic` CLI, `esptool`, `python` |
-| `~/.platformio` | **not** a venv — PlatformIO's data dir | `platforms/`, `packages/` (toolchains), `penv/` |
-| `~/.local/bin/pio` | symlink into `~/.platformio/penv/bin` | `pio` on PATH everywhere |
-
-`pio` deliberately lives **outside** the project virtualenv so every embedded
-project on the machine shares one PlatformIO install. Code that checks for the
-toolchain must look for `pio` on PATH, not inside the venv.
-
-`scripts/install-toolchain.sh` reproduces all of this on a fresh machine.
-
-**pyenv is this machine's choice, not a project requirement.** The scripts
-resolve the interpreter through `resolve_venv_bin()` in
-`scripts/lib/heltec-common.sh`, which tries `$HELTEC_VENV`, then `.venv/` in the
-checkout, then `$VIRTUAL_ENV`, then pyenv — first one with a `python` wins, and
-a candidate missing the requested tool is skipped rather than fatal. A
-contributor can `python3 -m venv .venv && .venv/bin/pip install meshtastic
-esptool` and never install pyenv. Do not reintroduce a hard-coded
-`~/.pyenv/versions/meshtastic` path; `peers-report.sh` had one and it was the
-only thing standing between a new developer and a working checkout.
+Three environments with distinct jobs: the project virtualenv holding the
+Meshtastic CLI and esptool, PlatformIO's own data directory, and `pio` on PATH
+outside both so every embedded project shares one install. **Code that checks
+for the build toolchain must look for `pio` on PATH, not inside the venv.**
+`resolve_venv_bin()` accepts four layouts, so **pyenv is this machine's choice
+and not a project requirement** — do not reintroduce a hard-coded
+`~/.pyenv/versions/...` path. Details in README, "Three environments".
 
 ## Shell script conventions
 
