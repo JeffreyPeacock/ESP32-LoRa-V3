@@ -169,15 +169,20 @@ The default and expected state of a node here is **Bluetooth to a phone, LoRa to
 the local mesh, WiFi off, MQTT off**. Nothing about ordinary Meshtastic use needs
 an internet connection — the mesh found in #3 runs entirely over RF.
 
-**Current experiment, 2026-09-02, expected to be temporary:** FTG1 is instead
-hosted over USB by the message listener, and FTG2 is the phone-hosted one.
-Treat that as the arrangement of the moment rather than the settled shape;
-FTG1 is intended to move to a Raspberry Pi (see
-`docs/raspberry-pi-deployment.md`), which changes the host again.
+**As of 2026-09-22 FTG1 lives on pi4, not on mahtoh.** The board was physically
+moved. It is USB-attached to pi4, held by a serial process there, with Bluetooth
+still enabled for a phone. **FTG2 is gone**, lost and presumed destroyed, and has
+been removed from the radio's node database, from the peer ledger and from
+meshview.
 
-**The serial port serves one process at a time.** While the listener runs,
-`meshtastic --port` on FTG1 fails with a silent non-response rather than an
-error. Stop it first: `systemctl --user stop meshtastic-listener`.
+**The listener on mahtoh is stopped and disabled.** It was still enabled against
+`…usb-0:3:1.0-port0`, a path with no radio behind it since 12:54 on 2026-09-22.
+It logged a disconnect and could not work. Re-point its `[listen] port` before
+re-enabling it anywhere.
+
+**The serial port serves one process at a time.** Whatever holds it — the
+listener, the MQTT proxy — blocks `meshtastic --port`, and the symptom is a
+silent non-response rather than an error. Stop the holder first.
 
 WiFi and MQTT get switched on for bridging work and switched back off. If a
 session leaves the board on WiFi, the phone cannot pair, because BLE is disabled
@@ -355,6 +360,44 @@ reach one node, select the *node* from the contact list, not a channel.
 and `setDeviceAddress` replaces it. It does not forget the others — the picker
 is built from Android's bonded devices filtered to Meshtastic names — so
 switching is choosing a different entry, not re-pairing.
+
+## MQTT without WiFi: the client proxy over the serial cable
+
+**WiFi and BLE cannot both run on this chip**, so enabling the radio's own WiFi
+to reach an MQTT broker costs the phone its Bluetooth link. There is a third way
+that needs neither.
+
+`mqtt.proxy_to_client_enabled` makes the radio hand its MQTT traffic to whatever
+client holds a link, and that client talks to the broker. The Python library
+implements both directions: `sendMqttClientProxyMessage` outbound and the
+`meshtastic.mqttclientproxymessage` pubsub topic inbound. Serial and BLE coexist,
+so a process on the host can carry MQTT while a phone stays paired.
+
+Running on pi4 as `~/bin/meshview-mqtt-proxy.py`, uplink only. Forwarding the
+other way would rebroadcast internet traffic onto a shared RF channel.
+
+**The radio must be rebooted after enabling MQTT.** The firmware starts its MQTT
+module at boot. Configured while running, it publishes nothing and reports no
+error; rebooted with the client already attached, it publishes immediately. This
+cost an hour. Two firmware suspects were read and cleared on the way: the
+`DontMqttMeBro` filter does not apply, because `10.0.0.0/8` is in the firmware's
+own private-range list, and the receive path does call the uplink for packets
+that are not ours.
+
+**Uplink is per channel and off by default.** With `mqtt.enabled` set and every
+channel's `uplink_enabled` false, the radio connects and republishes nothing.
+Channel 0 is the one that matters, because that is where the shared mesh is.
+
+## The Meshtastic CLI echoes every value it sets
+
+`meshtastic --set mqtt.password X` prints `Set mqtt.password to X`. A broker
+credential reached a session log this way on 2026-09-22 even though a mask
+pattern for `mqtt.password` already existed: it expected `mqtt.password <value>`
+and masked the word `to` instead. `scripts/export-transcript.sh` now matches the
+CLI's actual wording for any key ending in `password`, `psk`, `private_key` or
+`wifi_psk`. **Never print the output of `--set` without masking it.**
+
+The same applies to `--info`, which prints channel PSKs as `"psk": "<base64>"`.
 
 ## Reaching a headless node on WiFi
 
@@ -538,13 +581,18 @@ number:
 | `44:1B:F6:FB:8E:00` | `!f6fb8e00` | **FTG1**, the configured node |
 | `44:1B:F6:FA:AC:5C` | `!f6faac5c` | second board, unconfigured |
 
-**Address the boards by physical USB socket.** `/dev/serial/by-path/` is the
-best handle here, and both Reticulum configs use it:
+**Address the board by physical USB socket.** `/dev/serial/by-path/` is the best
+handle here:
 
-| Board | Path | Last confirmed |
-|---|---|---|
-| FTG1 | `pci-0000:00:14.0-usb-0:3:1.0-port0` | 2026-09-01, by MAC |
-| Heltec #2 | `pci-0000:00:14.0-usb-0:5.3.3.3:1.0-port0` | 2026-09-01, by MAC |
+| Host | Board | Path | Last confirmed |
+|---|---|---|---|
+| **pi4** | FTG1 | `platform-fd500000.pcie-pci-0000:01:00.0-usb-0:1.3:1.0-port0` | 2026-09-22, by MAC |
+| mahtoh | none | — | FTG1 left this host on 2026-09-22 |
+
+**by-path was chosen over by-id on pi4 too, even with one board attached.** These
+bridges ship with the factory serial `0001`, so a second identical board would
+silently collide on the by-id name and resolve to whichever won the race. A
+by-path that stops existing fails loudly instead. Prefer the loud failure.
 
 **A by-path name is the socket, not the board, so moving a board breaks it.**
 FTG1 was on `pci-0000:00:14.0-usb-0:1.1:1.0-port0` until 2026-09-01, when it was
@@ -570,12 +618,12 @@ serial `0001`. Nothing announced the swap. Confirm the MAC with
 that suddenly answers differently as a different board until the MAC says
 otherwise.
 
-## Four radios now, and only two can run RNode
+## Three radios now, and only one can run RNode
 
 | Device | Board | MCU | Radio | RNode? |
 |---|---|---|---|---|
-| `ttyUSB0` | Heltec V3 (FTG1) | ESP32-S3 | SX1262 | yes — running it |
-| `ttyUSB1` | Heltec V3 #2 | ESP32-S3 | SX1262 | yes — not yet flashed |
+| on **pi4** | Heltec V3 (FTG1) | ESP32-S3 | SX1262 | capable; runs Meshtastic |
+| ~~Heltec V3 #2 (FTG2)~~ | **lost, presumed destroyed 2026-09-22** | — | — | — |
 | `ttyACM0` | SparkFun Pro RF | **SAMD21** | RFM95 (SX1276) | **no** |
 | `ttyACM1` | SparkFun Pro RF | **SAMD21** | RFM95 (SX1276) | **no** |
 

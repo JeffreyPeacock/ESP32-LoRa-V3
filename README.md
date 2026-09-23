@@ -366,53 +366,41 @@ another RNode operator would most likely arrive on.
 
 ## Live configuration
 
-**Both Heltecs run Meshtastic 2.7.26** as of 2026-09-01. RNode was saved off
-first; `etc/rnode/RESTORE.md` has everything needed to put it back.
+**FTG1 moved to pi4 on 2026-09-22** and now serves a public meshview site. It is
+no longer attached to mahtoh. **FTG2 is lost and presumed destroyed**, and has
+been removed from the radio's node database, the peer ledger and meshview.
 
-| | FTG1 — stationary | FTG2 — portable |
-|---|---|---|
-| Node ID | `!f6fb8e00` | `!f6faac5c` |
-| Name | `FLG Tech Group 01` / `FTG1` | `FLG Tech Group 02` / `FTG2` |
-| Host | USB to this machine, running the listener | a phone over BLE |
-| Region / preset | US, `LONG_FAST` | US, `LONG_FAST` |
-| Bluetooth | enabled | enabled, **random PIN shown on the OLED** |
-| WiFi / MQTT | off / off | off / off |
-| Uplink / downlink | off on all channels | off on all channels |
-| Position | fixed, a public landmark | **fixed, the same landmark as FTG1** |
-| `position_precision` | 13 (km scale) | 13 (km scale) |
-| GPS | none fitted | none fitted |
-| Serial path | `…usb-0:3:1.0-port0` | `…usb-0:5.3.3.3:1.0-port0` |
+| | FTG1 |
+|---|---|
+| Host | **pi4**, USB, `ftg` account |
+| Node ID | `!f6fb8e00` |
+| Name | `FLG Tech Group 01` / `FTG1` |
+| Firmware | Meshtastic `2.7.26.54e0d8d` |
+| Region / preset | US, `LONG_FAST`, hop limit 3 |
+| Bluetooth | **enabled**, for a phone |
+| WiFi | **off** — enabling it would disable Bluetooth |
+| MQTT | **enabled**, `10.0.0.170`, root `msh/US` |
+| MQTT transport | **client proxy over serial**, not WiFi |
+| MQTT options | encryption on, TLS off, JSON off |
+| Channel 0 uplink | **enabled** — this is what republishes what we hear |
+| Channels 1, 2 uplink | off |
+| Position | fixed, a public landmark, `position_precision: 13` |
+| `nodeInfoBroadcastSecs` | 10800, briefly 900 while seeding the map |
+| Serial path | `…platform-fd500000.pcie…usb-0:1.3:1.0-port0` on pi4 |
+| Set by | WFAI-Ops #264, #265 |
 
-Both carry the same three channels: the default LongFast primary, `mqtt`, and
-**`ftg-priv`** with a generated key.
+Four user services run on pi4 under the `ftg` account: `meshview-db`,
+`meshview-web`, `meshview-proxy` and `meshview-mdns`. The site is reachable at
+`http://meshview.local/` on the local network and at
+`https://meshview.flagstafftechgroup.org/` through a reverse proxy on another
+host.
 
-**The whole path is verified on hardware**, 2026-09-02: a message typed on the
-phone reached a handset as an SMS, through
+**The message listener on mahtoh is stopped and disabled.** Its configured serial
+path has had no radio behind it since the board moved. Re-point `[listen] port`
+before re-enabling it.
 
-> phone → BLE → FTG2 → 915 MHz LoRa → FTG1 → USB → listener → relay → email
-> and SMS
-
-about two seconds end to end, at SNR 5.75 / RSSI −7 over 0 hops. The ledger row
-records `direct: true`, `pki_encrypted: true`, `email_sent: true`,
-`sms_sent: true`.
-
-**A direct message is addressed to the node, not posted to a channel.** In the
-app the three channels are group conversations keyed `0^all` / `1^all` /
-`2^all`; a DM to FTG1 is a separate conversation keyed `8!f6fb8e00`, where 8 is
-`PKC_CHANNEL_INDEX`, a sentinel rather than a real channel. `ftg-priv` is
-private in that strangers cannot read it, but it is still a broadcast to
-everyone holding the key. With `dm_only = true` a channel post is recorded and
-**not** forwarded.
-FTG2 got them by applying FTG1's channel URL, so the keys match exactly.
-
-**FTG2's fixed position is deliberate.** It is a portable node with no GPS, set
-to report the same landmark as FTG1 rather than where it actually is. Note the
-consequence: it will keep claiming that location while out in the field, and
-enabling "provide phone location" in the app would override it with your real
-position on a channel that neighbouring gateways can read.
-
-Revert to RNode with `etc/rnode/RESTORE.md`. The node IDs survive any reflash —
-they are derived from the MAC.
+Revert to RNode with `etc/rnode/RESTORE.md`, which now carries its own staleness
+warning. The node ID survives any reflash, because it is derived from the MAC.
 
 ### Meshtastic configuration, as last set (#1–#7)
 

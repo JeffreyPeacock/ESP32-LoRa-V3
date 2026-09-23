@@ -1,5 +1,13 @@
 # Restoring the RNode setup
 
+> **Stale as of 2026-09-22, in two ways.** FTG1 was physically moved to **pi4**,
+> so the `port =` line in `etc/reticulum/config` names a socket on mahtoh that no
+> longer has a radio behind it. And **FTG2 is lost, presumed destroyed**, so
+> `etc/reticulum/config.node-b` describes a board that does not exist. Both files
+> are kept for their interface settings, which are still correct. Re-read the
+> serial path on whatever host the board is on before using either.
+
+
 Saved 2026-09-01, immediately before both Heltecs were reflashed with
 Meshtastic. Everything needed to rebuild the Reticulum side is here or in
 `etc/reticulum/`; nothing was left only on the boards.
