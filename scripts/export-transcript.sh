@@ -239,7 +239,12 @@ PATTERNS = [
     ('psk (hex arg)',
      r'(--ch-set\s+psk\s+)(0x[0-9a-fA-F]{16,})'),
     ('mqtt password',
-     r'(mqtt\.password\s+)(?!\*)(\S{4,})'),
+     r'(mqtt\.password\s+)(?!\*|to\b)(\S{4,})'),
+    # The Meshtastic CLI echoes every value it sets, as "Set <key> to <value>".
+    # The pattern above expects "mqtt.password <value>" and masks the word "to"
+    # instead. This covers the CLI's actual wording for any secret-bearing key.
+    ('meshtastic --set echo (secret)',
+     r'(Set\s+\S*\.(?:password|psk|private_key|wifi_psk)\s+to\s+)(?!\*)(\S+)'),
     # security.privateKey from `meshtastic --export-config`. This is the node's
     # PKI identity: it decrypts direct messages addressed to us and can be used
     # to impersonate the node. It leaked into a session on 2026-08-19 because
