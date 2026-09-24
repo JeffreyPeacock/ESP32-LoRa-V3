@@ -137,40 +137,35 @@ is overwritten by the next position packet. The only fix is at the radio.
 
 ## There is an active mesh in range of FTG1 (#3)
 
-**FTG1 is not isolated.** 127 nodes in the ledger as of 2026-09-04 — 79 live in
-the NodeDB and 48 retained from earlier scans — 11 within 15 mi, typical SNR
-−5 to −6 dB. Real RF peers exist to test against, so link behaviour never had to
-wait on SJC. Detail — peer table, traceroutes, terrain maths, the node clock —
-is in `docs/meshtastic-rf-survey.md`.
+**FTG1 is not isolated.** 155 peers in the pi4 ledger as of 2026-09-23, 89 with
+positions, 19 within 15 mi, typical SNR −5 to −6 dB. Real RF peers exist to test
+against, so link behaviour never had to wait on SJC. The peer table, traceroutes
+and terrain arithmetic are in `docs/meshtastic-rf-survey.md`.
 
-Three conclusions belong here because they generalise:
+Three conclusions generalise:
 
 - **The path off the Flagstaff bowl is two routers, not one.** `Eldn`
-  (`!085e15cb`) does not see Prescott; it spans 103.7 km SW to `!1fa06b14`,
-  which does. An earlier session attributed the whole southwest reach to one
-  node and was wrong.
-- **`hopsAway: 0` says nothing about line of sight on this terrain.** The Eldn
-  link is 0-hop at ~0 dB SNR through a summit standing **384 m above the line of
-  sight, twenty times the first Fresnel radius**. Do not infer geometry from hop
-  counts, or a path from elevation.
-- **Routing is asymmetric**, which is normal — remember it when a one-way test
+  (`!085e15cb`) does not see Prescott; it spans 103.7 km SW to `!1fa06b14`, which
+  does. An earlier session credited one node with the whole reach and was wrong.
+- **`hopsAway: 0` says nothing about line of sight on this terrain.** That link is
+  0-hop at ~0 dB SNR through a summit standing 384 m above the line of sight,
+  twenty times the first Fresnel radius. Do not infer geometry from hop counts.
+- **Routing is asymmetric**, which is normal. Remember it when a one-way test
   looks like a failure.
 
-**Do not commit other operators' positions.** Node IDs are already public on the
-mesh and on MQTT maps; coordinates are someone else's location.
+**Do not commit other operators' positions.** Node IDs are already public;
+coordinates are someone else's location.
 
 ### Peer positions are not committed
 
-They are kept in `docs/peers.local.md`, which `.gitignore` excludes via
-`docs/*.local.*`. **The NodeDB ages entries out, so a scan is not a record** —
-`peers-report.sh` accumulates everything ever seen into `docs/peers.local.json`
-and merges it back each run, listing forgotten nodes separately. The ledger
-carries the same coordinates as the report and the script refuses to run unless
-**both** are gitignored.
+`docs/peers.local.md` is excluded by `docs/*.local.*`. **The NodeDB ages entries
+out, so a scan is not a record** — `peers-report.sh` accumulates everything ever
+seen into `docs/peers.local.json` and merges it back each run. It refuses to run
+unless both are gitignored. There are now two ledgers, one per host; **the pi4
+one is authoritative** because the radio is there.
 
-**Local secrets live in `etc/secrets/`**, ignored as a whole directory rather
-than by file pattern. Device config exports go there: they carry channel PSKs,
-the WiFi PSK, and `security.privateKey`, the node's PKI identity.
+**Local secrets live in `etc/secrets/`**, ignored as a whole directory. Device
+config exports carry channel PSKs, the WiFi PSK and `security.privateKey`.
 
 ## Normal operating mode is BLE, no network
 
@@ -349,36 +344,19 @@ and `setDeviceAddress` replaces it. It does not forget the others — the picker
 is built from Android's bonded devices filtered to Meshtastic names — so
 switching is choosing a different entry, not re-pairing.
 
-## MQTT without WiFi: the client proxy over the serial cable
+## MQTT without WiFi, if Bluetooth must stay on
 
-**WiFi and BLE cannot both run on this chip**, so enabling the radio's own WiFi
-to reach an MQTT broker costs the phone its Bluetooth link. There is a third way
-that needs neither.
+**WiFi and BLE cannot both run on this chip.** `mqtt.proxy_to_client_enabled`
+makes the radio hand its MQTT traffic to whatever client holds a link, so a
+process on the host can carry it while a phone stays paired over Bluetooth.
+Retired on 2026-09-23 when FTG1 moved to its own WiFi. Full write-up, including
+the working proxy and the uplink-only reasoning, in
+`docs/mqtt-over-serial-proxy.md`.
 
-`mqtt.proxy_to_client_enabled` makes the radio hand its MQTT traffic to whatever
-client holds a link, and that client talks to the broker. The Python library
-implements both directions: `sendMqttClientProxyMessage` outbound and the
-`meshtastic.mqttclientproxymessage` pubsub topic inbound. Serial and BLE coexist,
-so a process on the host can carry MQTT while a phone stays paired.
-
-Written as `~/bin/meshview-mqtt-proxy.py` on pi4, uplink only, because forwarding
-the other way would rebroadcast internet traffic onto a shared RF channel.
-**Retired on 2026-09-23** when FTG1 moved to its own WiFi and began publishing
-directly. Kept documented because it is the only way to have MQTT and Bluetooth
-at once, and because it frees nothing else: with the proxy gone the serial port is
-free for `peers-report.sh`, the CLI and esptool.
-
-**The radio must be rebooted after enabling MQTT.** The firmware starts its MQTT
-module at boot. Configured while running, it publishes nothing and reports no
-error; rebooted with the client already attached, it publishes immediately. This
-cost an hour. Two firmware suspects were read and cleared on the way: the
-`DontMqttMeBro` filter does not apply, because `10.0.0.0/8` is in the firmware's
-own private-range list, and the receive path does call the uplink for packets
-that are not ours.
-
-**Uplink is per channel and off by default.** With `mqtt.enabled` set and every
-channel's `uplink_enabled` false, the radio connects and republishes nothing.
-Channel 0 is the one that matters, because that is where the shared mesh is.
+**The radio must be rebooted after MQTT is enabled**, whichever transport it
+uses. The firmware starts its MQTT module at boot; configured while running, it
+publishes nothing and reports no error. **Uplink is per channel and off by
+default**, so a radio can connect to a broker and republish nothing.
 
 ## A successful `--set` is not evidence the device took the value
 
@@ -416,8 +394,7 @@ the WiFi failure codes are in `docs/wifi-and-headless-access.md`.
 
 ## Which firmware is on the board
 
-The board holds one firmware at a time and there is no way to tell from the
-outside. Check before assuming:
+One firmware at a time, and no way to tell from outside. Check before assuming:
 
 ```bash
 ./scripts/heltec-dev.sh raw     # tap RST, read the banner, Ctrl-C
@@ -425,43 +402,17 @@ outside. Check before assuming:
 
 `==== Heltec WiFi LoRa 32 V3 bring-up ====` is the PlatformIO diagnostic;
 Meshtastic and RNode announce themselves in their own boot logs.
+**`heltec-dev.sh flash` overwrites whatever is there**, so run
+`meshtastic --export-config` first if the configuration matters.
 
-**`./scripts/heltec-dev.sh flash` overwrites whatever is there** with the
-PlatformIO diagnostic. That is the intended escape hatch for proving hardware,
-but run `meshtastic --export-config` first if there is configuration worth
-keeping — channel PSKs included, which is why those exports are gitignored.
+**Do not use Meshtastic's own `device-install.sh` on this board.** Version 2.7.26
+reads the real spiffs offset out of the `.mt.json` metadata and then flashes
+littlefs to a hardcoded `0x300000` anyway. On the heltec-v3 8MB scheme spiffs is
+at `0x670000`, and `0x300000` is inside `app1`, so the script erases the OTA
+image it wrote seconds earlier. The board still boots, which is why this is easy
+to miss. The by-hand procedure is in `docs/flashing-meshtastic.md`.
 
-As of 2026-09-01 FTG1 runs Meshtastic **2.7.26.54e0d8d**, target `heltec-v3`.
-
-### Meshtastic's own `device-install.sh` flashes littlefs to the wrong offset
-
-**Do not use it on this board.** Version 2.7.26's script reads the real spiffs
-offset out of the `.mt.json` metadata and then ignores it:
-
-```bash
-SPIFFS_OFFSET=$(jq -r '.part[] | select(.subtype == "spiffs") | .offset' "$METAFILE")
-...
-$ESPTOOL_CMD ${ESPTOOL_WRITE_FLASH} $OFFSET "${SPIFFSFILE}"   # $OFFSET, not $SPIFFS_OFFSET
-```
-
-`$OFFSET` is a hardcoded `0x300000`. On the heltec-v3 8MB scheme spiffs is at
-**`0x670000`**, and `0x300000` lands inside `app1` — so the script erases the
-OTA image it wrote seconds earlier, and leaves the filesystem partition blank.
-The board still boots, which is why this is easy to miss.
-
-Flash the three images by hand at the offsets the metadata gives:
-
-```bash
-esptool --port <port> erase-flash
-esptool --port <port> write-flash 0x0      firmware-heltec-v3-<ver>.factory.bin
-esptool --port <port> write-flash 0x340000 mt-esp32s3-ota.bin
-esptool --port <port> write-flash 0x670000 littlefs-heltec-v3-<ver>.bin
-```
-
-The script also refuses to run without `<target>.mt.json` and `mt-esp32s3-ota.bin`
-beside the factory image; both are in the release zip, not in the per-board
-subset we had saved. Verify every `md5sum` against the `files` list in the
-metadata before flashing.
+FTG1 runs Meshtastic **2.7.26.54e0d8d**, target `heltec-v3`.
 
 ## A direct message needs the recipient's public key, or it never transmits
 
@@ -542,63 +493,37 @@ pin is the one combination that is not allowed.
 The USB-C port does **not** reach the ESP32-S3's native USB. It goes to a
 CP2102N bridge on UART0, so the board enumerates as `10c4:ea60` → `/dev/ttyUSBn`,
 never as `303a:1001`. The stock PlatformIO board definition declares the native
-USB hwid, so port autodetect finds no match and falls back to the first serial
-port on the system. `platformio.ini` pins `/dev/ttyUSB*` for this reason.
+USB hwid, so autodetect finds no match and falls back to the first serial port on
+the system. `platformio.ini` pins `/dev/ttyUSB*` for this reason.
 
-ModemManager probes every new tty with AT commands and collides with esptool for
-several seconds after plug-in. `scripts/heltec-setup.sh` installs a udev rule
-tagging the device `ID_MM_DEVICE_IGNORE`. This is the load-bearing part of that
-rule; the `MODE`/`GROUP` lines are redundant with Ubuntu's own defaults.
+**ModemManager probes every new tty with AT commands** and collides with esptool
+for several seconds after plug-in. `scripts/heltec-setup.sh` installs a udev rule
+tagging the device `ID_MM_DEVICE_IGNORE`. That tag is the load-bearing part; the
+`MODE`/`GROUP` lines are redundant with Ubuntu's defaults.
 
-The `/dev/heltec-*` symlink does **not** identify a specific board — Heltec ships
-these CP2102Ns with the factory serial `0001`, so every board produces
-`/dev/heltec-0001`. With more than one attached, use `/dev/serial/by-path/`.
+**Identify a board by MAC, never by port number or by serial.** Heltec ships
+these CP2102Ns with the factory serial `0001`, so `/dev/heltec-0001` and
+`/dev/serial/by-id/` collapse every board onto one name and silently resolve to
+whichever won the race — observed pointing at the wrong board while the other was
+in use. FTG1 is `44:1B:F6:FB:8E:00`. Confirm with
+`esptool --port <dev> chip-id`, and treat a board that suddenly answers
+differently as a different board until the MAC says otherwise. On 2026-08-23
+`/dev/ttyUSB1` was a CP2102N with a unique serial; the next day it was a Heltec
+with serial `0001`, and nothing announced the swap.
 
-**This stopped being hypothetical on 2026-08-24**: there are now two Heltec V3
-boards, both reporting serial `0001`. Tell them apart by MAC, never by port
-number:
-
-| MAC | Node ID would be | Notes |
-|---|---|---|
-| `44:1B:F6:FB:8E:00` | `!f6fb8e00` | **FTG1**, the configured node |
-| `44:1B:F6:FA:AC:5C` | `!f6faac5c` | second board, unconfigured |
-
-**Address the board by physical USB socket.** `/dev/serial/by-path/` is the best
-handle here:
-
-| Host | Board | Path | Last confirmed |
-|---|---|---|---|
-| **pi4** | FTG1 | `platform-fd500000.pcie-pci-0000:01:00.0-usb-0:1.3:1.0-port0` | 2026-09-22, by MAC |
-| mahtoh | none | — | FTG1 left this host on 2026-09-22 |
-
-**by-path was chosen over by-id on pi4 too, even with one board attached.** These
-bridges ship with the factory serial `0001`, so a second identical board would
-silently collide on the by-id name and resolve to whichever won the race. A
-by-path that stops existing fails loudly instead. Prefer the loud failure.
+**Address the board by physical USB socket**, `/dev/serial/by-path/`. FTG1 is on
+pi4 at `platform-fd500000.pcie-pci-0000:01:00.0-usb-0:1.3:1.0-port0`, confirmed
+by MAC on 2026-09-22. **by-path is preferred over by-id even with one board
+attached**, because by-id fails silently and a by-path that stops existing fails
+loudly.
 
 **A by-path name is the socket, not the board, so moving a board breaks it.**
-FTG1 was on `pci-0000:00:14.0-usb-0:1.1:1.0-port0` until 2026-09-01, when it was
-found on `usb-0:3` instead — plugged straight into the machine rather than
-through the hub chain. `etc/reticulum/config` still named the old path, so
-`rnsd` would have failed to open the radio. Re-confirm the path with
-`./scripts/heltec-dev.sh ports` and the MAC with `chip-id` after any replug; the
-MAC is the only thing that identifies a board.
-
-**`/dev/serial/by-id/` is worse than useless for these.** Both Heltecs generate
-the identical id string, so udev creates **one** symlink and it silently points
-at whichever board won the race — observed pointing at #2 while FTG1 was the one
-in use. Never use by-id with more than one Heltec attached.
-
-Plugging in the other radios (two SparkFun Pro RF on `/dev/ttyACM*`, the
-1-channel gateway on a CH340) can renumber `ttyUSBn`. The pinned paths are
-immune to that; a bare `/dev/ttyUSB0` is not.
-
-**A `ttyUSBn` number is not an identity.** On 2026-08-23 `/dev/ttyUSB1` was a
-CP2102N with the unique serial `c44d2da5…`; the next day it was a Heltec with
-serial `0001`. Nothing announced the swap. Confirm the MAC with
-`esptool --port <dev> chip-id` before acting on any board, and treat a board
-that suddenly answers differently as a different board until the MAC says
-otherwise.
+FTG1 moved sockets twice: on 2026-09-01 within mahtoh, and on 2026-09-22 to pi4.
+The first time `etc/reticulum/config` still named the old path, so `rnsd` would
+have failed to open the radio. Re-read the path with `heltec-dev.sh ports` and
+re-confirm the MAC after any replug. Other radios on `/dev/ttyACM*` and a CH340
+gateway can renumber `ttyUSBn`; the pinned paths are immune, a bare
+`/dev/ttyUSB0` is not.
 
 ## Three radios now, and only one can run RNode
 

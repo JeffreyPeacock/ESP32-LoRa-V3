@@ -604,6 +604,8 @@ docs/aredn-as-a-transport.md          reference: AREDN, and why Part 97 rules it
 docs/config-tools.md                  GUI alternatives to the CLIs, and how to install each
 docs/raspberry-pi-deployment.md       moving the radio and listener to a Pi 4
 docs/wifi-and-headless-access.md      reaching a node over WiFi, and what WiFi costs
+docs/mqtt-over-serial-proxy.md        MQTT without WiFi, so Bluetooth can stay on (retired)
+docs/flashing-meshtastic.md           flashing procedure, and the vendor script's bad offset
 docs/handoff-mail-relay.md            outbound mail brief for whoever runs the relay
 docs/meshtastic-rf-survey.md          what was measured on the air around FTG1 (#3)
 etc/reticulum/          Reticulum config for FTG1, and its backups
