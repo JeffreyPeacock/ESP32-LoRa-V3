@@ -107,16 +107,33 @@ operator's address.
 the operator lives, and the same rule applied to other operators' positions
 applies to ours. Read them from the device with `meshtastic --info` when needed.
 
-Two things blunt the disclosure, and it is worth knowing both:
+**`position_precision` on channel 0 was 13 until 2026-09-23 and is now 32.** The
+old note here said the published position was quantised to roughly km scale. That
+is no longer true: the radio now transmits the stored coordinate exactly, to every
+map and every node that hears it.
 
-- Channel 0 carries `position_precision: 13`, so what leaves the radio is
-  quantised to roughly km scale, not the stored value.
-- The stored fix is a public landmark to begin with.
+Only one thing blunts the disclosure now, and it is the one that always did the
+real work: **the stored fix is a public landmark, not the operator's address.**
+Precision was blurring a decoy, which bought nothing and cost accuracy, so the
+owner chose to give it up.
 
 Note the ordering consequence: once a position is broadcast, a location-hinting
-**node name adds little further disclosure** — the position packet is already
-more precise than the name. The name decision was made under the older
-assumption that no position was being sent.
+**node name adds little further disclosure** — the position packet is more
+precise than the name. The name decision was made under the older assumption that
+no position was being sent.
+
+### Reduced precision is a shared bucket, not a location
+
+**Eight nodes reported the identical latitude `352059392`**, including FTG2 and
+six strangers. A coordinate several nodes share is a quantisation cell, not a
+place. This is what made FTG1 appear 1.4 km from its true position and land on
+exactly the spot FTG2 had occupied — they were rounded into the same bucket
+rather than being in the same field.
+
+Two consequences worth keeping. **Do not read a position on a map as a
+measurement** when the sender runs reduced precision. And **fixing it in the
+database does not work**: meshview stores whatever arrives, so a hand-edited row
+is overwritten by the next position packet. The only fix is at the radio.
 
 ## There is an active mesh in range of FTG1 (#3)
 
@@ -157,9 +174,10 @@ the WiFi PSK, and `security.privateKey`, the node's PKI identity.
 
 ## Normal operating mode is BLE, no network
 
-The default and expected state of a node here is **Bluetooth to a phone, LoRa to
-the local mesh, WiFi off, MQTT off**. Nothing about ordinary Meshtastic use needs
-an internet connection — the mesh found in #3 runs entirely over RF.
+That was the rule while a phone was the host. **FTG1 changed on 2026-09-23 and
+now runs its own WiFi**, so its Bluetooth is off and it reaches the MQTT broker
+directly. Ordinary Meshtastic use still needs no internet — the mesh found in #3
+runs entirely over RF — but this node is no longer an ordinary case.
 
 **As of 2026-09-22 FTG1 lives on pi4, not on mahtoh.** The board was physically
 moved. It is USB-attached to pi4, held by a serial process there, with Bluetooth
@@ -343,8 +361,12 @@ implements both directions: `sendMqttClientProxyMessage` outbound and the
 `meshtastic.mqttclientproxymessage` pubsub topic inbound. Serial and BLE coexist,
 so a process on the host can carry MQTT while a phone stays paired.
 
-Running on pi4 as `~/bin/meshview-mqtt-proxy.py`, uplink only. Forwarding the
-other way would rebroadcast internet traffic onto a shared RF channel.
+Written as `~/bin/meshview-mqtt-proxy.py` on pi4, uplink only, because forwarding
+the other way would rebroadcast internet traffic onto a shared RF channel.
+**Retired on 2026-09-23** when FTG1 moved to its own WiFi and began publishing
+directly. Kept documented because it is the only way to have MQTT and Bluetooth
+at once, and because it frees nothing else: with the proxy gone the serial port is
+free for `peers-report.sh`, the CLI and esptool.
 
 **The radio must be rebooted after enabling MQTT.** The firmware starts its MQTT
 module at boot. Configured while running, it publishes nothing and reports no
@@ -357,6 +379,23 @@ that are not ours.
 **Uplink is per channel and off by default.** With `mqtt.enabled` set and every
 channel's `uplink_enabled` false, the radio connects and republishes nothing.
 Channel 0 is the one that matters, because that is where the shared mesh is.
+
+## A successful `--set` is not evidence the device took the value
+
+`meshtastic --set position.position_broadcast_secs 60` printed
+`Set position.position_broadcast_secs to 60` and `Writing position configuration
+to device`, exited 0, and the device still reported **3600**. The firmware
+clamped or ignored it and said nothing.
+
+**Read the setting back after every write.** `--info` is the only check that
+means anything; the CLI's own output reports intent, not outcome. The same run
+set `position_precision` successfully, so this is per-field rather than a broken
+connection.
+
+There is **no flag that sends a position on demand**. Re-applying the fixed
+position with `--setlat/--setlon/--setalt` makes the radio transmit one
+immediately, which is the way to test a position change without waiting out
+`position_broadcast_secs`.
 
 ## The Meshtastic CLI echoes every value it sets
 

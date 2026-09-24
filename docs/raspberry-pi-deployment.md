@@ -274,3 +274,29 @@ channels, the PKI keys and the fixed position all live in the radio's flash.
 Moving it to a different computer changes nothing on the air.
 
 **The phone keeps talking to FTG2**, which is unaffected by any of this.
+
+## meshview: two behaviours that look like faults
+
+Learned 2026-09-23 while getting the map populated.
+
+**A node appears on the map only after it sends NodeInfo, not after it sends a
+position.** meshview creates a node row from `NODEINFO_APP` only. Its
+`POSITION_APP` handler looks the node up and, finding no row, discards the
+position silently (`meshview/mqtt_store.py`). NodeInfo defaults to every 10800
+seconds, so on a quiet mesh the map takes days to fill while the firehose shows
+positions arriving. Nothing is broken.
+
+**The map opens at the wrong zoom.** `initMapPolling()` calls
+`map.fitBounds(...)` and then `setTimeout(() => map.invalidateSize(), 100)`. That
+order is backwards: `fitBounds` computes a zoom from a container that has not
+settled, and `invalidateSize` afterwards corrects the size without re-fitting, so
+the map opens at street level regardless of the configured bounds. A node outside
+that small viewport is drawn with an empty SVG path (`d="M0 0"`) and looks
+missing. Local patch swaps the order.
+
+**Local changes live outside the checkout**, in
+`~/deployments/prod/patches/`, applied by
+`~/deployments/prod/bin/apply-local-patches.sh` after every `git pull`. It
+reports `applied`, `already` or `FAILED` and exits non-zero on the last, because
+a patch that silently does not apply leaves a deployment that looks patched and
+is not.

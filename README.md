@@ -406,20 +406,23 @@ been removed from the radio's node database, the peer ledger and meshview.
 | Name | `FLG Tech Group 01` / `FTG1` |
 | Firmware | Meshtastic `2.7.26.54e0d8d` |
 | Region / preset | US, `LONG_FAST`, hop limit 3 |
-| Bluetooth | **enabled**, for a phone |
-| WiFi | **off** — enabling it would disable Bluetooth |
+| Bluetooth | **off in practice** — WiFi is on and the two are exclusive |
+| WiFi | **on** since 2026-09-23, so the radio reaches the broker itself |
 | MQTT | **enabled**, `10.0.0.170`, root `msh/US` |
-| MQTT transport | **client proxy over serial**, not WiFi |
+| MQTT transport | **direct over WiFi**; the serial proxy is retired |
 | MQTT options | encryption on, TLS off, JSON off |
 | Channel 0 uplink | **enabled** — this is what republishes what we hear |
 | Channels 1, 2 uplink | off |
-| Position | fixed, a public landmark, `position_precision: 13` |
-| `nodeInfoBroadcastSecs` | 10800, briefly 900 while seeding the map |
+| Position | fixed, a public landmark, **`position_precision: 32`** (was 13) |
+| Intervals | `nodeInfoBroadcastSecs` 10800, `positionBroadcastSecs` 3600, both at default |
 | Serial path | `…platform-fd500000.pcie…usb-0:1.3:1.0-port0` on pi4 |
 | Set by | WFAI-Ops #264, #265 |
 
-Four user services run on pi4 under the `ftg` account: `meshview-db`,
-`meshview-web`, `meshview-proxy` and `meshview-mdns`. The site is reachable at
+Three user services run on pi4 under the `ftg` account: `meshview-db`,
+`meshview-web` and `meshview-mdns`. `meshview-proxy` is stopped and disabled: it
+carried MQTT over the serial cable so Bluetooth could stay on, and the move to
+WiFi made it unnecessary. **The serial port is now free**, so `peers-report.sh`,
+the Meshtastic CLI and esptool all run without stopping anything. The site is reachable at
 `http://meshview.local/` on the local network and at
 `https://meshview.flagstafftechgroup.org/` through a reverse proxy on another
 host.
@@ -504,9 +507,10 @@ Three entries above are choices rather than defaults left alone:
   productive. It is not private; a dedicated channel with a generated key comes
   later.
 - **The fixed position is a nearby public landmark**, not the operator's
-  address, and the coordinates are not committed. Channel 0 also carries
-  `position_precision: 13`, so what leaves the radio is coarsened to roughly km
-  scale regardless.
+  address, and the coordinates are not committed. `position_precision` on
+  channel 0 was 13 and is **32 since 2026-09-23**, so the stored coordinate now
+  leaves the radio exactly. Precision was blurring a decoy, which bought nothing
+  and put the node 1.4 km from where it belonged on every map.
 
 ## Bridging a mesh to the internet
 
