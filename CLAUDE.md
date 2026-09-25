@@ -62,12 +62,10 @@ NeoPixel — both RX and TX map to `pin_led_rx = 35`. So a constant light on thi
 board is the charger talking.
 
 **The charger restarts on any VBUS interruption.** Observed 2026-08-27: the
-orange LED lit when an unrelated USB device was plugged into the same powered
-hub. The board is bus-powered and was three hubs deep sharing a rail with ten
-storage devices; a momentary dip drops it to battery, and when USB returns the
-TP4054 begins a fresh cycle to top up. The trigger was not conclusively
-identified — do not read a diagnosis into the LED beyond "a charge cycle is
-running".
+orange LED lit when an unrelated device was plugged into the same powered hub. A
+momentary dip drops a bus-powered board to battery, and when USB returns the
+TP4054 starts a fresh top-up cycle. The trigger was never conclusively
+identified — **read nothing into the LED beyond "a charge cycle is running"**.
 
 Verified on the bench: OLED answers at 0x3C, SX1262 initialises at 915 MHz,
 MAC `44:1B:F6:FB:8E:00`, ESP32-S3 rev v0.2, 8 MB flash, no PSRAM.
@@ -158,20 +156,17 @@ coordinates are someone else's location.
 
 ### Silence is not evidence here — the mesh is slow
 
-Measured 2026-09-25: **about one packet every 140 seconds** reaches the broker
-(0.0077/s, ~668/day). That rate makes short samples useless as proof. A 60-second
-watch that sees nothing is the *expected* result, not a fault, and a 450-second
-watch seeing nothing is still only about 4% surprising.
+Measured 2026-09-25: **one packet every ~140 s** reaches the broker (0.0077/s,
+~668/day). A 60-second watch seeing nothing is the *expected* result; even 450
+seconds of silence is only ~4% surprising.
 
-This matters because **a subscription that matches nothing looks exactly like a
-quiet mesh**, and so does a sampler killed before it flushed. Three different
-causes, one empty output. Never conclude anything from a silent sample.
-
-What works is a comparison that can fail: run the old and the new filter against
-the broker **at the same time** and compare counts. That is the global rule —
-prove a detector can fire before trusting its silence — applied to a
-subscription. Narrowing meshview's topic from `msh/#` to `msh/US/2/e/#` was
-confirmed that way; both returned the identical 4 messages over 300 s.
+**A subscription that matches nothing, a quiet mesh, and a sampler killed before
+it flushed all produce the same empty output.** Never conclude anything from a
+silent sample. What works is a comparison that can fail: run the old and new
+filter against the broker **at the same time** and compare counts — the
+prove-the-detector-can-fire rule applied to a subscription. Narrowing meshview
+from `msh/#` to `msh/US/2/e/#` was confirmed that way, both returning the same 4
+messages over 300 s.
 
 ### Peer positions are not committed
 
@@ -184,49 +179,41 @@ one is authoritative** because the radio is there.
 **Local secrets live in `etc/secrets/`**, ignored as a whole directory. Device
 config exports carry channel PSKs, the WiFi PSK and `security.privateKey`.
 
-## Normal operating mode is BLE, no network
+## FTG1 runs its own WiFi now, not BLE
 
-That was the rule while a phone was the host. **FTG1 changed on 2026-09-23 and
-now runs its own WiFi**, so its Bluetooth is off and it reaches the MQTT broker
-directly. Ordinary Meshtastic use still needs no internet — the mesh found in #3
-runs entirely over RF — but this node is no longer an ordinary case.
+**This section used to say the normal mode was BLE with no network.** True while
+a phone was the host, wrong for FTG1 now: since 2026-09-23 it runs its own WiFi,
+so **Bluetooth is off** and it reaches the broker directly. Ordinary Meshtastic
+still needs no internet — the mesh in #3 is all RF — but this node is no longer
+an ordinary case.
 
-**As of 2026-09-22 FTG1 lives on pi4, not on mahtoh.** The board was physically
-moved. It is USB-attached to pi4, but **nothing holds the serial port** and
-**Bluetooth is off**. Both were true once and are not now: the MQTT proxy that
-held the port is stopped and disabled, and BLE went away when the radio moved to
-its own WiFi on 2026-09-23. **FTG2 is gone**, lost and presumed destroyed, and has
-been removed from the radio's node database, from the peer ledger and from
-meshview.
+**FTG1 lives on pi4 since 2026-09-22**, USB-attached, and **nothing holds the
+serial port**: the MQTT proxy that used to is stopped and disabled. **FTG2 is
+gone**, lost and presumed destroyed, and removed from the NodeDB, the peer ledger
+and meshview.
 
-**The listener on mahtoh is stopped and disabled.** It was still enabled against
-`…usb-0:3:1.0-port0`, a path with no radio behind it since 12:54 on 2026-09-22.
-It logged a disconnect and could not work. Re-point its `[listen] port` before
-re-enabling it anywhere.
+**The listener on mahtoh is stopped and disabled.** It pointed at
+`…usb-0:3:1.0-port0`, a path with no radio behind it since 2026-09-22. Re-point
+its `[listen] port` before re-enabling it anywhere.
 
-**The serial port serves one process at a time.** Whatever holds it — the
-listener, the MQTT proxy — blocks `meshtastic --port`, and the symptom is a
-silent non-response rather than an error. Stop the holder first.
+**The serial port serves one process at a time.** Whatever holds it blocks
+`meshtastic --port`, and the symptom is a silent non-response, not an error.
 
-**That temporary pattern no longer applies to FTG1.** WiFi and MQTT used to be
-switched on for bridging work and switched back off, and this file used to say to
-restore the old mode afterwards. **Do not do that on FTG1 now**: its WiFi and its
-MQTT uplink are the permanent configuration, and turning either off stops ingest
-to the public meshview site. The commands below are kept only for a node that is
-genuinely doing temporary bridging work, which FTG1 is not:
+**Do not "restore the normal mode" on FTG1.** This file used to end here with
+commands that turn WiFi and MQTT off after bridging work. Both are now FTG1's
+permanent configuration and turning either off stops ingest to the public
+meshview site. They remain correct only for a node doing genuinely temporary
+bridging:
 
 ```bash
 meshtastic --set network.wifi_enabled false --set mqtt.enabled false
 meshtastic --ch-set downlink_enabled false --ch-index 1
 ```
 
-The trade-off is still real and worth stating plainly: because BLE is disabled
-whenever WiFi is up, **a phone cannot pair with FTG1 at all** while it is in this
-mode. Reaching it means the LAN, not Bluetooth.
-
-Keep `downlink_enabled` off on every channel during normal use. Downlink over
-the BLE proxy is what triggers the queue-saturation bug below, and it is
-worthless without a broker anyway.
+Because BLE is disabled whenever WiFi is up, **a phone cannot pair with FTG1 at
+all** in this mode; reach it over the LAN. Keep `downlink_enabled` off on every
+channel — over the BLE proxy it triggers the queue-saturation bug below, and it
+is worthless without a broker.
 
 ## MQTT downlink needs the node's own network (#7)
 
@@ -292,15 +279,8 @@ the same value expressed either way.
 **RNode does not use a custom sync word** — it uses the ordinary private one
 that most non-LoRaWAN devices default to. And it cannot be changed: the setter
 ignores its argument and hardcodes the value, with a `TODO` in the source asking
-why.
-
-```c
-void sx126x::setSyncWord(uint16_t sw) {
-  // TODO: Why was this hardcoded instead of using the config value?
-  writeRegister(REG_SYNC_WORD_MSB_6X, 0x14);
-  writeRegister(REG_SYNC_WORD_LSB_6X, 0x24);
-}
-```
+why — `sx126x::setSyncWord()` writes `0x14`/`0x24` to the register pair and never
+reads `sw`.
 
 Two consequences:
 
@@ -315,33 +295,22 @@ Two consequences:
 
 ## A stale Android bond makes the radio invisible, not just unpairable
 
-Cost real time on 2026-09-01. **Reflashing the board does not change its BLE
-address**, so a pairing Android made when the board ran RNode survives the
-change to Meshtastic — and Android keeps honouring it.
+Cost real time on 2026-09-01. **Reflashing does not change the board's BLE
+address**, so a bond Android made under RNode survives the change to Meshtastic
+and Android keeps honouring it.
 
-The symptom is misleading: **the phone's scan does not list the device at all.**
-Android excludes already-bonded devices from discovery results, so it looks
-exactly like a radio that is not advertising. It is not a firmware fault and
-there is nothing to fix on the board.
+The symptom misleads: **the phone's scan does not list the device at all**,
+because Android excludes bonded devices from discovery. That looks exactly like a
+radio not advertising, but there is nothing to fix on the board.
 
-The tell is the asymmetry. Scan from a Linux host at the same moment and the
-device is plainly there:
+The tell is asymmetry — `meshtastic --ble-scan` from a Linux host finds it at the
+same moment. **Desktop sees it, phone does not → stale bond on the phone.** Fix
+it in Android's Bluetooth settings: forget the entry, then pair from inside the
+app. Power-cycling the radio and rebooting the phone were both tried and neither
+helps; the bond is on the phone.
 
-```bash
-meshtastic --ble-scan
-# Found: name='FTG2_ac5c' address='44:1B:F6:FA:AC:5D'
-```
-
-**Desktop sees it, phone does not → stale bond on the phone.** Fix it in
-Android's Bluetooth settings: forget the old entry, then pair from inside the
-Meshtastic app.
-
-Two things that do **not** help, both tried: power-cycling the radio, and
-rebooting the phone. The bond is on the phone and survives both.
-
-Note the address: BLE advertises on **MAC + 1** — `…AC:5D` where the WiFi MAC is
-`…AC:5C`. That is ordinary ESP32 behaviour, the peripherals get consecutive
-addresses. Do not read the mismatch as the wrong board.
+BLE advertises on **MAC + 1** (`…AC:5D` where the WiFi MAC is `…AC:5C`) —
+ordinary ESP32 behaviour. Do not read the mismatch as the wrong board.
 
 ## A channel is not a direct message, and the app hides the difference
 
@@ -445,18 +414,12 @@ FTG1 runs Meshtastic **2.7.26.54e0d8d**, target `heltec-v3`.
 ## A direct message needs the recipient's public key, or it never transmits
 
 Proven on the bench 2026-09-01. **Broadcasts work immediately; direct messages
-do not.** Sending a DM to a node whose public key the sender lacks fails
-*locally* — the packet never goes on air:
-
-```
-$ meshtastic --dest '!f6fb8e00' --sendtext "..." --ack
-Received a NAK, error reason: PKI_SEND_FAIL_PUBLIC_KEY
-```
-
-The same NAK appears on the primary channel and on a private one, so it is not a
-channel-key problem: **2.7 does not fall back to channel-PSK encryption for a
-DM.** Confirmed from the receiving side too, where `--listen` showed a control
-broadcast arriving and no trace of the DM.
+do not.** A DM to a node whose public key the sender lacks fails *locally* — the
+packet never goes on air, with
+`NAK ... PKI_SEND_FAIL_PUBLIC_KEY`. The same NAK appears on the primary channel
+and on a private one, so it is not a channel-key problem: **2.7 does not fall
+back to channel-PSK encryption for a DM.** Confirmed from the receiving side too,
+where `--listen` showed a control broadcast arriving and no trace of the DM.
 
 The key travels in **NodeInfo**. A node that has heard only a text packet knows
 the sender's node *number* but not its name or key, so it can be one hop away,
@@ -539,19 +502,17 @@ differently as a different board until the MAC says otherwise. On 2026-08-23
 `/dev/ttyUSB1` was a CP2102N with a unique serial; the next day it was a Heltec
 with serial `0001`, and nothing announced the swap.
 
-**Address the board by physical USB socket**, `/dev/serial/by-path/`. FTG1 is on
-pi4 at `platform-fd500000.pcie-pci-0000:01:00.0-usb-0:1.3:1.0-port0`, confirmed
-by MAC on 2026-09-22. **by-path is preferred over by-id even with one board
-attached**, because by-id fails silently and a by-path that stops existing fails
-loudly.
+**Address the board by physical USB socket**, `/dev/serial/by-path/` — preferred
+over by-id even with one board attached, because by-id fails silently while a
+missing by-path fails loudly. FTG1 is on pi4 at
+`platform-fd500000.pcie-pci-0000:01:00.0-usb-0:1.3:1.0-port0`, confirmed by MAC.
 
 **A by-path name is the socket, not the board, so moving a board breaks it.**
-FTG1 moved sockets twice: on 2026-09-01 within mahtoh, and on 2026-09-22 to pi4.
-The first time `etc/reticulum/config` still named the old path, so `rnsd` would
-have failed to open the radio. Re-read the path with `heltec-dev.sh ports` and
-re-confirm the MAC after any replug. Other radios on `/dev/ttyACM*` and a CH340
-gateway can renumber `ttyUSBn`; the pinned paths are immune, a bare
-`/dev/ttyUSB0` is not.
+FTG1 moved twice; the first time `etc/reticulum/config` still named the old path
+and `rnsd` would have failed to open the radio. Re-read it with
+`heltec-dev.sh ports` and re-confirm the MAC after any replug. Other radios on
+`/dev/ttyACM*` and a CH340 gateway can renumber `ttyUSBn`; pinned paths are
+immune, a bare `/dev/ttyUSB0` is not.
 
 ## Three radios now, and only one can run RNode
 
@@ -649,16 +610,15 @@ The board holds 17 items, so a single `gh project item-list` is complete and
 cheap — the paging workarounds needed on larger boards do not apply here. Still
 filter server-side where the option exists.
 
-**A per-issue `issue.projectItems` query is safe here but not everywhere.**
-Checked 2026-09-25: it returns `totalCount 1` for all 17 issues on board #10, so
-`/fix-ticket` Step 0 is sound. It returns a **silent `totalCount 0` for items
-that demonstrably exist** when the project owner and the repository owner are
-different accounts — observed on `White-Feather-AI/WFAI-Ops`, whose board is
-owned by the user `WhiteFeatherAI`. I read that zero as "not on a board" and
-asserted it in two closing comments; both were wrong. Note the discriminator is
-*owner mismatch*, not user-owned projects as such, because board #10 is
-user-owned and works. On any repo where the owners differ, read the board once
-with `gh project item-list` and join locally.
+**A per-issue `issue.projectItems` query is safe here but not everywhere.** It
+returns `totalCount 1` for all 17 issues on board #10, so `/fix-ticket` Step 0 is
+sound. It returns a **silent `totalCount 0` for items that demonstrably exist**
+when the project owner and the repo owner are different accounts — seen on
+`White-Feather-AI/WFAI-Ops`, board owned by the user `WhiteFeatherAI`. I read that
+zero as "not on a board" and was wrong in two closing comments. The discriminator
+is **owner mismatch**, not user-owned projects: board #10 is user-owned and
+works. Where the owners differ, read the board once with `gh project item-list`
+and join locally.
 
 ## Branches and verification
 
@@ -703,18 +663,16 @@ IDs, gates and hardware realities of this repo.
 while doing it. Masking is on by default and the script refuses to write to any
 path inside the repository that is not gitignored.
 
-This is not hypothetical. A single session here captured a WiFi PSK -- because
-the Meshtastic CLI **echoes the value it sets**, so "run it yourself so it stays
-out of the transcript" does not work -- and a Meshtastic channel URL, which
-encodes **every channel's pre-shared key**.
+This is not hypothetical. One session captured a WiFi PSK — the Meshtastic CLI
+**echoes the value it sets**, so "run it yourself so it stays out of the
+transcript" does not work — and a channel URL, which encodes **every channel's
+PSK**.
 
 Project-specific literals go in `.claude_artifacts/mask-secrets.txt`, one per
-line. Prefer that to `--secret` on the command line: an argument lands in shell
-history and then in the *next* transcript.
-
-The script verifies its own output by re-running the masking patterns against
-the finished file, so the check and the fix share one definition and cannot
-drift apart. It still only knows the patterns it was given.
+line. Prefer that to `--secret`, whose argument lands in shell history and then
+in the *next* transcript. The script verifies its own output by re-running the
+patterns against the finished file, so check and fix cannot drift apart — but it
+only knows the patterns it was given.
 
 ## Commits
 
