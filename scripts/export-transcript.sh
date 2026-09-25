@@ -240,6 +240,12 @@ PATTERNS = [
      r'(--ch-set\s+psk\s+)(0x[0-9a-fA-F]{16,})'),
     ('mqtt password',
      r'(mqtt\.password\s+)(?!\*|to\b)(\S{4,})'),
+    # A config FILE spells the same secret as "password = <value>". meshview's
+    # config.ini carries the broker credential that way, and it reached a session
+    # log on 2026-09-25 because every pattern above expects the CLI's wording.
+    # Covers ini/toml (= ) and yaml (: ) for any key ending in a secret word.
+    ('secret in a config file',
+     r'^(\s*\S*(?:password|passwd|psk|secret|token|api_key)\s*[=:]\s*)(?!\*)(\S{4,})'),
     # The Meshtastic CLI echoes every value it sets, as "Set <key> to <value>".
     # The pattern above expects "mqtt.password <value>" and masks the word "to"
     # instead. This covers the CLI's actual wording for any secret-bearing key.
