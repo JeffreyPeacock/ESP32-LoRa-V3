@@ -156,6 +156,23 @@ Three conclusions generalise:
 **Do not commit other operators' positions.** Node IDs are already public;
 coordinates are someone else's location.
 
+### Silence is not evidence here — the mesh is slow
+
+Measured 2026-09-25: **about one packet every 140 seconds** reaches the broker
+(0.0077/s, ~668/day). That rate makes short samples useless as proof. A 60-second
+watch that sees nothing is the *expected* result, not a fault, and a 450-second
+watch seeing nothing is still only about 4% surprising.
+
+This matters because **a subscription that matches nothing looks exactly like a
+quiet mesh**, and so does a sampler killed before it flushed. Three different
+causes, one empty output. Never conclude anything from a silent sample.
+
+What works is a comparison that can fail: run the old and the new filter against
+the broker **at the same time** and compare counts. That is the global rule —
+prove a detector can fire before trusting its silence — applied to a
+subscription. Narrowing meshview's topic from `msh/#` to `msh/US/2/e/#` was
+confirmed that way; both returned the identical 4 messages over 300 s.
+
 ### Peer positions are not committed
 
 `docs/peers.local.md` is excluded by `docs/*.local.*`. **The NodeDB ages entries
@@ -574,6 +591,12 @@ All scripts must pass `shellcheck -x` with no output. Run it before finishing.
   match, the upstream command dies of SIGPIPE, and the pipeline returns 141
   despite the match succeeding. This has already caused two real bugs here. Read
   into a variable and use a herestring.
+- **`mosquitto_sub` block-buffers when its stdout is a pipe.** Under `timeout`
+  it is killed before the buffer flushes, so it prints **nothing at all** — no
+  partial line, no error — and that is indistinguishable from a subscription
+  that matched nothing. Two samples were lost to this on 2026-09-25. Redirect to
+  a file and read the file afterwards, or use `stdbuf -oL`. The same applies to
+  any long-running producer sampled under `timeout`.
 - **Watch for functions shadowing commands.** A status helper named `head()` once
   shadowed `/usr/bin/head` in the same script. shellcheck does not catch this.
 - Every subcommand is **idempotent** — re-running changes nothing already in the

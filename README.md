@@ -409,6 +409,7 @@ been removed from the radio's node database, the peer ledger and meshview.
 | Bluetooth | **off in practice** — WiFi is on and the two are exclusive |
 | WiFi | **on** since 2026-09-23, so the radio reaches the broker itself |
 | MQTT | **enabled**, `10.0.0.170`, root `msh/US` |
+| MQTT topic | `msh/US/2/e/LongFast/!f6fb8e00` — `<root>/<region>/2/e/<channel>/<gateway>` |
 | MQTT transport | **direct over WiFi**; the serial proxy is retired |
 | MQTT options | encryption on, TLS off, JSON off |
 | Channel 0 uplink | **enabled** — this is what republishes what we hear |
@@ -416,7 +417,8 @@ been removed from the radio's node database, the peer ledger and meshview.
 | Position | fixed, a public landmark, **`position_precision: 32`** (was 13) |
 | Intervals | `nodeInfoBroadcastSecs` 10800, `positionBroadcastSecs` 3600, both at default |
 | Serial path | `…platform-fd500000.pcie…usb-0:1.3:1.0-port0` on pi4 |
-| Set by | WFAI-Ops #264, #265 |
+| udev rule | installed on pi4 2026-09-25, `99-heltec-cp210x.rules`; survives reboot |
+| Set by | WFAI-Ops #264, #265 — both closed 2026-09-25 |
 
 Three user services run on pi4 under the `ftg` account: `meshview-db`,
 `meshview-web` and `meshview-mdns`. `meshview-proxy` is stopped and disabled: it
@@ -426,6 +428,16 @@ the Meshtastic CLI and esptool all run without stopping anything. The site is re
 `http://meshview.local/` on the local network and at
 `https://meshview.flagstafftechgroup.org/` through a reverse proxy on another
 host.
+
+meshview subscribes to **`msh/US/2/e/#`**, narrowed from `msh/#` on 2026-09-25
+once the radio's topic was known. It is deliberately not pinned to the channel or
+to the gateway node id, because those are the two levels that can legitimately
+change and pinning them would silently drop traffic. Its map queries a **10-day**
+activity window, widened to 90 days while the database was being seeded and
+brought back once live traffic had overtaken the backfill. That value and the
+`fitBounds`/`invalidateSize` ordering fix live in
+`~/deployments/prod/patches/`, applied after every `git pull`, because the
+checkout itself is upstream's.
 
 **The message listener on mahtoh is stopped and disabled.** Its configured serial
 path has had no radio behind it since the board moved. Re-point `[listen] port`
