@@ -173,8 +173,24 @@ messages over 300 s.
 `docs/peers.local.md` is excluded by `docs/*.local.*`. **The NodeDB ages entries
 out, so a scan is not a record** — `peers-report.sh` accumulates everything ever
 seen into `docs/peers.local.json` and merges it back each run. It refuses to run
-unless both are gitignored. There are now two ledgers, one per host; **the pi4
-one is authoritative** because the radio is there.
+unless both are gitignored. **185 entries on 2026-09-25** (160 then in the NodeDB,
+25 retained), 101 positioned, 21 within 15 mi.
+
+**This file used to say there were two ledgers, one per host, with pi4's
+authoritative because the radio is there. Both halves were wrong.** There is no
+ledger on pi4 and there never was a durable one — `~ftg` has none at any depth and
+no checkout for the script to write into, so the 155-entry figure came from a run
+pointed at a file that has since gone. The reasoning is void too: the radio is on
+WiFi, so **any host on the LAN can produce the ledger** with
+`peers-report.sh --host 10.0.0.117`, and which USB socket it occupies decides
+nothing. There is one ledger, here.
+
+Its main consumer is `~/deployments/prod/bin/seed-meshview-from-peers.py` on pi4,
+which fills meshview's node table from it because meshview learns a name only
+from NodeInfo. **Seeded rows carry the ledger's timestamps, not `now()`**, so a
+node the radio last heard weeks ago stays outside a narrow map window rather than
+pretending to be current — seeding can therefore grow the database and leave the
+map unchanged.
 
 **Local secrets live in `etc/secrets/`**, ignored as a whole directory. Device
 config exports carry channel PSKs, the WiFi PSK and `security.privateKey`.
