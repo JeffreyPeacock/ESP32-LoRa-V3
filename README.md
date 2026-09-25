@@ -439,6 +439,17 @@ brought back once live traffic had overtaken the backfill. That value and the
 `~/deployments/prod/patches/`, applied after every `git pull`, because the
 checkout itself is upstream's.
 
+meshview learns a node's name only from a NodeInfo packet, which nodes send
+every three hours by default, so on a quiet mesh the map fills over days.
+`~/deployments/prod/bin/seed-meshview-from-peers.py` fills the gap from the peer
+ledger: seeded 2026-09-25 from 185 ledger entries, taking the node table from 171
+to 186 rows and positioned nodes from 92 to 102. It writes a row only when the
+ledger entry is newer than what meshview already holds, and it uses the ledger's
+timestamps rather than the current time, so **a node last heard weeks ago stays
+outside a narrow activity window instead of pretending to be current.** Seeding
+can therefore enlarge the database and leave the map showing no more, or fewer.
+Stop `meshview-db` first; there must be one writer.
+
 **The message listener on mahtoh is stopped and disabled.** Its configured serial
 path has had no radio behind it since the board moved. Re-point `[listen] port`
 before re-enabling it.
@@ -481,7 +492,7 @@ dependency.
 | | | Set by |
 |---|---|---|
 | Region | `US` (902–928 MHz) | #2 |
-| Fixed position | set; coordinates **not** recorded here | #5 |
+| Fixed position | set; coordinates in `etc/secrets/ftg1-position.conf`, gitignored | #5 |
 | Modem preset | `LONG_FAST` | default |
 | Hop limit | `3` | default, max 7 |
 | TX enabled | `true` | |
@@ -519,7 +530,9 @@ Three entries above are choices rather than defaults left alone:
   productive. It is not private; a dedicated channel with a generated key comes
   later.
 - **The fixed position is a nearby public landmark**, not the operator's
-  address, and the coordinates are not committed. `position_precision` on
+  address, and the coordinates are in no tracked file. They are recorded in
+  `etc/secrets/ftg1-position.conf` so the device need not be re-read.
+  `position_precision` on
   channel 0 was 13 and is **32 since 2026-09-23**, so the stored coordinate now
   leaves the radio exactly. Precision was blurring a decoy, which bought nothing
   and put the node 1.4 km from where it belonged on every map.

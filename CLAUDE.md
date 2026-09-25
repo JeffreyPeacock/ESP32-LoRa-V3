@@ -101,9 +101,12 @@ FTG1 has no GPS. It carries a **fixed position** set with
 `--setlat/--setlon/--setalt`, chosen as a nearby public landmark rather than the
 operator's address.
 
-**The coordinates are not recorded in this repository.** They approximate where
-the operator lives, and the same rule applied to other operators' positions
-applies to ours. Read them from the device with `meshtastic --info` when needed.
+**The coordinates are in no tracked file**, because they approximate where the
+operator lives and the rule applied to other operators' positions applies to
+ours. They *are* recorded now: `etc/secrets/ftg1-position.conf`, gitignored and
+mode 600, written 2026-09-25 with the degrees, the protobuf integer form, the
+altitude and the command to re-apply them. **This file used to say to read them
+off the device with `--info` each time; read the secrets file instead.**
 
 **`position_precision` on channel 0 was 13 until 2026-09-23 and is now 32.** The
 old note here said the published position was quantised to roughly km scale. That
@@ -135,8 +138,8 @@ is overwritten by the next position packet. The only fix is at the radio.
 
 ## There is an active mesh in range of FTG1 (#3)
 
-**FTG1 is not isolated.** 155 peers in the pi4 ledger as of 2026-09-23, 89 with
-positions, 19 within 15 mi, typical SNR −5 to −6 dB. Real RF peers exist to test
+**FTG1 is not isolated.** 185 peers in the ledger as of 2026-09-25, 101 with
+positions, 21 within 15 mi, typical SNR −5 to −6 dB. Real RF peers exist to test
 against, so link behaviour never had to wait on SJC. The peer table, traceroutes
 and terrain arithmetic are in `docs/meshtastic-rf-survey.md`.
 
@@ -396,6 +399,13 @@ CLI's actual wording for any key ending in `password`, `psk`, `private_key` or
 `wifi_psk`. **Never print the output of `--set` without masking it.**
 
 The same applies to `--info`, which prints channel PSKs as `"psk": "<base64>"`.
+
+**`--info` also prints the entire NodeDB**, so grepping its output for
+`latitude` or `longitude` returns *every peer's* coordinates rather than this
+node's. That happened on 2026-09-25 and put other operators' positions in a
+session log. FTG1's own fixed position lives in the `position` config block and
+in its own `!f6fb8e00` NodeDB row — scope to those. The rule against committing
+other operators' coordinates applies to transcripts as well as to files.
 
 ## Reaching a node over WiFi
 
