@@ -622,9 +622,20 @@ Labels: `hardware` `meshtastic` `mqtt` `reticulum` `rf` `lorawan` `coordination`
 **Multi-site link** (needs an operator at SJC or SNA). The milestone test is
 verifiability, not subject matter.
 
-The board holds ~12 items, so a single `gh project item-list` is complete and
+The board holds 17 items, so a single `gh project item-list` is complete and
 cheap — the paging workarounds needed on larger boards do not apply here. Still
 filter server-side where the option exists.
+
+**A per-issue `issue.projectItems` query is safe here but not everywhere.**
+Checked 2026-09-25: it returns `totalCount 1` for all 17 issues on board #10, so
+`/fix-ticket` Step 0 is sound. It returns a **silent `totalCount 0` for items
+that demonstrably exist** when the project owner and the repository owner are
+different accounts — observed on `White-Feather-AI/WFAI-Ops`, whose board is
+owned by the user `WhiteFeatherAI`. I read that zero as "not on a board" and
+asserted it in two closing comments; both were wrong. Note the discriminator is
+*owner mismatch*, not user-owned projects as such, because board #10 is
+user-owned and works. On any repo where the owners differ, read the board once
+with `gh project item-list` and join locally.
 
 ## Branches and verification
 
