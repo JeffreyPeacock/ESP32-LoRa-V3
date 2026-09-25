@@ -175,8 +175,10 @@ directly. Ordinary Meshtastic use still needs no internet — the mesh found in 
 runs entirely over RF — but this node is no longer an ordinary case.
 
 **As of 2026-09-22 FTG1 lives on pi4, not on mahtoh.** The board was physically
-moved. It is USB-attached to pi4, held by a serial process there, with Bluetooth
-still enabled for a phone. **FTG2 is gone**, lost and presumed destroyed, and has
+moved. It is USB-attached to pi4, but **nothing holds the serial port** and
+**Bluetooth is off**. Both were true once and are not now: the MQTT proxy that
+held the port is stopped and disabled, and BLE went away when the radio moved to
+its own WiFi on 2026-09-23. **FTG2 is gone**, lost and presumed destroyed, and has
 been removed from the radio's node database, from the peer ledger and from
 meshview.
 
@@ -189,14 +191,21 @@ re-enabling it anywhere.
 listener, the MQTT proxy — blocks `meshtastic --port`, and the symptom is a
 silent non-response rather than an error. Stop the holder first.
 
-WiFi and MQTT get switched on for bridging work and switched back off. If a
-session leaves the board on WiFi, the phone cannot pair, because BLE is disabled
-whenever WiFi is up. **Restore the normal mode when finishing bridging work:**
+**That temporary pattern no longer applies to FTG1.** WiFi and MQTT used to be
+switched on for bridging work and switched back off, and this file used to say to
+restore the old mode afterwards. **Do not do that on FTG1 now**: its WiFi and its
+MQTT uplink are the permanent configuration, and turning either off stops ingest
+to the public meshview site. The commands below are kept only for a node that is
+genuinely doing temporary bridging work, which FTG1 is not:
 
 ```bash
 meshtastic --set network.wifi_enabled false --set mqtt.enabled false
 meshtastic --ch-set downlink_enabled false --ch-index 1
 ```
+
+The trade-off is still real and worth stating plainly: because BLE is disabled
+whenever WiFi is up, **a phone cannot pair with FTG1 at all** while it is in this
+mode. Reaching it means the LAN, not Bluetooth.
 
 Keep `downlink_enabled` off on every channel during normal use. Downlink over
 the BLE proxy is what triggers the queue-saturation bug below, and it is
@@ -388,9 +397,11 @@ The same applies to `--info`, which prints channel PSKs as `"psk": "<base64>"`.
 
 ## Reaching a node over WiFi
 
-Only relevant when a node runs its own WiFi, which FTG1 does not. WiFi and BLE
-are mutually exclusive on ESP32. The ports, the phone's network-device path and
-the WiFi failure codes are in `docs/wifi-and-headless-access.md`.
+**FTG1 runs its own WiFi as of 2026-09-23, so this applies to it directly.** This
+section previously said the opposite, which was true only while a phone was the
+host. WiFi and BLE are mutually exclusive on ESP32. The ports, the phone's
+network-device path and the WiFi failure codes are in
+`docs/wifi-and-headless-access.md`.
 
 ## Which firmware is on the board
 
