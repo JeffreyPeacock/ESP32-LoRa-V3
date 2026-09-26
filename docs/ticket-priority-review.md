@@ -4,7 +4,7 @@ The [LoRa Wide-Area Mesh board](https://github.com/users/JeffreyPeacock/projects
 authoritative detail. This is the at-a-glance ordering the board does not give cleanly, plus a Note
 column that is analysis rather than board data.
 
-**Snapshot:** 2026-09-04 21:30 MST · 10 open · 8 Backlog · 2 In Progress
+**Snapshot:** 2026-09-25 19:27 MST · 10 open · 8 Backlog · 2 In Progress
 
 |  Pri   | #  |    Status   | Milestone | Title | Note |
 |:------:|:--:|:-----------:|:---------:|-------|------|
