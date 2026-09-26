@@ -492,7 +492,7 @@ dependency.
 | | | Set by |
 |---|---|---|
 | Region | `US` (902–928 MHz) | #2 |
-| Fixed position | set; coordinates in `etc/secrets/ftg1-position.conf`, gitignored | #5 |
+| Fixed position | set, and **offset from where the radio is**; decoy in `etc/secrets/ftg1-position.conf`, real location in `ftg1-geoloc.txt`, both gitignored | #5 |
 | Modem preset | `LONG_FAST` | default |
 | Hop limit | `3` | default, max 7 |
 | TX enabled | `true` | |
@@ -530,8 +530,13 @@ Three entries above are choices rather than defaults left alone:
   productive. It is not private; a dedicated channel with a generated key comes
   later.
 - **The fixed position is a nearby public landmark**, not the operator's
-  address, and the coordinates are in no tracked file. They are recorded in
-  `etc/secrets/ftg1-position.conf` so the device need not be re-read.
+  address, and it is **offset from where the radio actually is**. Neither value
+  is in a tracked file: `etc/secrets/ftg1-geoloc.txt` holds the real approximate
+  location and `etc/secrets/ftg1-position.conf` holds the broadcast decoy plus
+  the measured offset, both mode 600. The offset must never be written down in a
+  tracked file, because the broadcast coordinate is already public and the two
+  together give up the real one. Reasoning and measurements:
+  [docs/ftg1-position-and-privacy.md](docs/ftg1-position-and-privacy.md).
   `position_precision` on
   channel 0 was 13 and is **32 since 2026-09-23**, so the stored coordinate now
   leaves the radio exactly. Precision was blurring a decoy, which bought nothing

@@ -538,6 +538,15 @@ All scripts must pass `shellcheck -x` with no output. Run it before finishing.
   that matched nothing. Two samples were lost to this on 2026-09-25. Redirect to
   a file and read the file afterwards, or use `stdbuf -oL`. The same applies to
   any long-running producer sampled under `timeout`.
+- **A zero from a line-based check usually means the check is broken.** Four
+  variants cost real time on 2026-09-25, each looking like an absent finding:
+  `cmd | sed` under `||` reports *sed's* exit status, so the fallback never
+  fires; `\|` inside `grep -E` matches a literal pipe rather than alternation;
+  a phrase wrapped across two lines is invisible to line-based `grep`, so
+  **flatten whitespace before matching prose**; and `awk 'length>80'` counts
+  *bytes* here, so em-dashes and `−` give false over-length reports. This is the
+  global prove-the-detector rule in its commonest local form: **match something
+  known present before trusting a zero.**
 - **Watch for functions shadowing commands.** A status helper named `head()` once
   shadowed `/usr/bin/head` in the same script. shellcheck does not catch this.
 - Every subcommand is **idempotent** — re-running changes nothing already in the
