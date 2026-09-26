@@ -114,7 +114,8 @@ is no longer true: the radio now transmits the stored coordinate exactly, to eve
 map and every node that hears it.
 
 What blunts the disclosure is that **the stored fix is offset from where the
-radio actually is, and is a public landmark rather than the operator's address.**
+radio actually is, and is a public landmark rather than the operator's
+address.**
 The offset's size and bearing are recorded **only** in `etc/secrets/`. They must
 never appear here: this repository is public and the broadcast coordinate is
 public too, so publishing the offset would hand over the real location.
@@ -150,17 +151,18 @@ packet. The only fix is at the radio.
 
 ### The offset costs nothing on the air and everything in geometry
 
-**Nothing the radio does is affected.** Meshtastic floods with a hop limit rather
-than routing by geography, so a fixed position sets no transmit parameter, no
+**Nothing the radio does is affected.** Meshtastic floods with a hop limit
+rather than routing by geography, so a fixed position sets no transmit
+parameter, no
 neighbour selection and no rebroadcast decision. Free-space loss changes by a
 fraction of a dB over any path of interest here.
 
 **But the offset is large compared with the first Fresnel radius at these path
 lengths**, so **terrain profiles, line-of-sight checks and antenna siting must
-use the real coordinate from `etc/secrets/`**, never the broadcast one. Treat any
-existing path analysis as drawn from the broadcast position unless it says
+use the real coordinate from `etc/secrets/`**, never the broadcast one. Treat
+any existing path analysis as drawn from the broadcast position unless it says
 otherwise. `peers-report.sh` reads its origin from the device, so its distances
-and its "within 15 mi" count are measured from the broadcast position too — small
+and its "within 15 mi" count come from the broadcast position too — small
 against that threshold, but not zero.
 
 ## There is an active mesh in range of FTG1 (#3)
