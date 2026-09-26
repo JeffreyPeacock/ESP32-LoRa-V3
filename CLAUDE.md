@@ -304,7 +304,6 @@ Two consequences:
   not isolation.** It stops decoding; it does not stop the energy, and CSMA
   still defers to it.
 
-
 ## The Android app has two traps, and neither is a radio fault
 
 Both are in `docs/meshtastic-app-behaviour.md`, moved there because they bite
