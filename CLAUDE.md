@@ -95,75 +95,36 @@ and services that ingest that broker keep what they heard; a later rename will
 not rewrite their history. Renaming the device is still trivial, but the old
 name cannot be recalled.
 
-## FTG1 broadcasts a fixed position
+## FTG1 broadcasts a fixed position, offset on purpose
 
-FTG1 has no GPS. It carries a **fixed position** set with
-`--setlat/--setlon/--setalt`, chosen as a nearby public landmark rather than the
-operator's address.
+Full reasoning and the measurements are in
+[`docs/ftg1-position-and-privacy.md`](docs/ftg1-position-and-privacy.md). The
+headlines, because each of these is easy to get wrong from memory:
 
-**The coordinates are in no tracked file**, because they approximate where the
-operator lives and the rule applied to other operators' positions applies to
-ours. They *are* recorded now: `etc/secrets/ftg1-position.conf`, gitignored and
-mode 600, written 2026-09-25 with the degrees, the protobuf integer form, the
-altitude and the command to re-apply them. **This file used to say to read them
-off the device with `--info` each time; read the secrets file instead.**
-
-**`position_precision` on channel 0 was 13 until 2026-09-23 and is now 32.** The
-old note here said the published position was quantised to roughly km scale. That
-is no longer true: the radio now transmits the stored coordinate exactly, to every
-map and every node that hears it.
-
-What blunts the disclosure is that **the stored fix is offset from where the
-radio actually is, and is a public landmark rather than the operator's
-address.**
-The offset's size and bearing are recorded **only** in `etc/secrets/`. They must
-never appear here: this repository is public and the broadcast coordinate is
-public too, so publishing the offset would hand over the real location.
-
-**Correction — this file used to say precision was "blurring a decoy, which
-bought nothing".** Half wrong. It did cost accuracy, and that half stands. But
-quantisation published an *area* where precision 32 publishes a *point*, and the
-cell is several km on a side (below), so dropping to 32 gave up real protection
-rather than none. What quantisation never gave was **secrecy** — the grid is
-public and deterministic, so anyone who knows it recovers the cell. Area
-uncertainty, not a hidden offset.
-
-One ordering consequence: once a position is broadcast a location-hinting **node
-name adds little further disclosure**, because the packet is more precise than
-the name. The name was chosen assuming no position was being sent.
-
-### Reduced precision is a shared bucket, not a location
-
-**Eight nodes reported the identical latitude `352059392`**, including FTG2 and
-six strangers. A coordinate several nodes share is a quantisation cell, not a
-place — which is why FTG1 appeared 1.4 km out, on the exact spot FTG2 had
-occupied: same bucket, not same field.
-
-The grid was **confirmed, not guessed**: the step is `2^18` in units of 1e-7
-degrees (0.0262144°, roughly 2.9 km N–S and 2.4 km E–W at this latitude), and
-snapping the stored coordinate to it reproduces `352059392` exactly. That bucket
-and the grid are both public, so recording them here discloses nothing.
-
-So **do not read a map position as a measurement** when the sender runs reduced
-precision. And **fixing it in the database does not work** — meshview stores
-whatever arrives, so a hand-edited row is overwritten by the next position
-packet. The only fix is at the radio.
-
-### The offset costs nothing on the air and everything in geometry
-
-**Nothing the radio does is affected.** Meshtastic floods with a hop limit
-rather than routing by geography, so a fixed position sets no transmit
-parameter, no
-neighbour selection and no rebroadcast decision. Free-space loss changes by a
-fraction of a dB over any path of interest here.
-
-**But the offset is large compared with the first Fresnel radius at these path
-lengths**, so **terrain profiles, line-of-sight checks and antenna siting must
-use the real coordinate from `etc/secrets/`**, never the broadcast one. Treat
-any existing path analysis as drawn from the broadcast position unless it says
-otherwise. `peers-report.sh` reads its origin from the device, so its distances
-and its "within 15 mi" count come from the broadcast position too — small
-against that threshold, but not zero.
+- **Where the values are.** `etc/secrets/ftg1-geoloc.txt` is the radio's real
+  approximate location; `etc/secrets/ftg1-position.conf` is the broadcast decoy
+  plus the measured offset. Both mode 600, in a wholly gitignored directory.
+  **The real location, the offset's size and its bearing must never appear in a
+  tracked file** — the broadcast coordinate is already public, so the two
+  together give up the real one. This file used to say to read the position off
+  the device each time; read the secrets file.
+- **`position_precision` on channel 0 was 13 until 2026-09-23 and is now 32**, so
+  the stored coordinate now leaves the radio **exactly**. The offset is the only
+  remaining protection. Earlier notes calling the old quantisation worthless were
+  wrong: it published an area of several km², which is not nothing.
+- **A shared coordinate is a quantisation cell, not a place.** Eight nodes once
+  reported the identical latitude `352059392`, which is why FTG1 appeared 1.4 km
+  out on FTG2's exact spot. **Do not read a map position as a measurement** when
+  the sender runs reduced precision, and **do not correct it in the database** —
+  meshview stores whatever arrives and the next packet overwrites the edit. The
+  only fix is at the radio.
+- **The offset is free on the air and expensive in geometry.** Meshtastic floods
+  with a hop limit and does not route by geography, so no transmit parameter or
+  rebroadcast decision depends on position. But the offset is several times the
+  first Fresnel radius at every path length that matters here, so **terrain
+  profiles, line-of-sight checks and antenna siting must use the real
+  coordinate**, and any existing path analysis should be assumed to have used the
+  broadcast one.
 
 ## There is an active mesh in range of FTG1 (#3)
 
