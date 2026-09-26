@@ -640,6 +640,8 @@ docs/handoff-mail-relay.md            outbound mail brief for whoever runs the r
 docs/meshtastic-rf-survey.md          what was measured on the air around FTG1 (#3)
 docs/meshtastic-app-behaviour.md      two Android-app traps that look like radio faults
 docs/ftg1-position-and-privacy.md     the fixed position, the offset, and what it costs
+docs/meshtastic-direct-messages.md    why a DM needs the recipient's key first
+docs/power-budget.md                  whole-board current draw, and the runtime it gives
 etc/reticulum/          Reticulum config for FTG1, and its backups
 etc/secrets/            device config exports and anything else local — gitignored
 etc/firmware/           vendor images kept for rollback — gitignored

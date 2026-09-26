@@ -395,29 +395,22 @@ FTG1 runs Meshtastic **2.7.26.54e0d8d**, target `heltec-v3`.
 
 ## A direct message needs the recipient's public key, or it never transmits
 
-Proven on the bench 2026-09-01. **Broadcasts work immediately; direct messages
-do not.** A DM to a node whose public key the sender lacks fails *locally* — the
-packet never goes on air, with
-`NAK ... PKI_SEND_FAIL_PUBLIC_KEY`. The same NAK appears on the primary channel
-and on a private one, so it is not a channel-key problem: **2.7 does not fall
-back to channel-PSK encryption for a DM.** Confirmed from the receiving side too,
-where `--listen` showed a control broadcast arriving and no trace of the DM.
+Detail in
+[`docs/meshtastic-direct-messages.md`](docs/meshtastic-direct-messages.md).
+Proven on the bench, and it shapes how to test a new link:
 
-The key travels in **NodeInfo**. A node that has heard only a text packet knows
-the sender's node *number* but not its name or key, so it can be one hop away,
-plainly audible, and still unmessagable. NodeInfo goes out on
-`device.nodeInfoBroadcastSecs`, **default 10800 s (3 hours)**, so two nodes
-flashed together may not be able to message each other for hours. Once exchanged
-the DM works first time and is acknowledged.
+- **The failure is local.** A DM to a node whose public key the sender lacks
+  never goes on air — `NAK … PKI_SEND_FAIL_PUBLIC_KEY`. **2.7 does not fall back
+  to channel-PSK encryption for a DM**, so a private channel does not help.
+- **The key travels in NodeInfo**, default every **10800 s (3 hours)**. A node
+  can be one hop away, plainly audible, and still unmessagable. So **test a new
+  link with a broadcast**, which works from the first packet.
+- **A PKI direct message rides the primary channel regardless of `--ch-index`**,
+  arriving as `channel: 0`, `pki_encrypted: True`. Not a misconfiguration.
+- `--set-owner` with the values it already holds writes and broadcasts nothing,
+  so it is no shortcut for forcing NodeInfo out.
 
-**A PKI direct message travels on the primary channel regardless of
-`--ch-index`.** Sent with `--ch-index 2`, it arrived as `channel: 0`,
-`pki_encrypted: True`. Do not read that as a misconfiguration.
-
-`--set-owner` with the values it already holds writes nothing and broadcasts
-nothing, so it is not a shortcut for forcing NodeInfo out.
-
-### After an esptool command the board may not answer Meshtastic
+## After an esptool command the board may not answer Meshtastic
 
 Seen 2026-09-04. `heltec-dev.sh chip-id` runs esptool's **stub flasher**, and
 although it prints `Hard resetting via RTS pin` the board can be left in a state
@@ -433,31 +426,19 @@ already running application firmware — it identifies the board without the stu
 
 ## Power draw, from the datasheet (not estimated)
 
-Heltec datasheet Rev 1.1 Table 3.4, page 11, whole board, measured USB-powered.
-Vendor PDFs for every chip are mirrored in `docs/datasheets/`; read them there
-rather than from memory or from a web search:
+Full table and reasoning in [`docs/power-budget.md`](docs/power-budget.md).
+Whole-board, USB-powered, from Heltec datasheet Rev 1.1 Table 3.4:
 
-| Mode | Current |
-|---|---:|
-| RX (TX disabled) | **90 mA** |
-| Bluetooth | 115 mA |
-| WiFi scan / AP | 115 / 150 mA |
-| TX @ 22 dBm | 230 mA |
-| Sleep, on battery | 15 µA |
+| RX | Bluetooth | WiFi scan / AP | TX @ 22 dBm | Sleep on battery |
+|---:|---:|---:|---:|---:|
+| **90 mA** | 115 mA | 115 / 150 mA | 230 mA | 15 µA |
 
-On a 3000 mAh pack that is roughly **one day**, not two. Estimating from
-component datasheets gave 55 mA, about half the real figure, because the
-whole-board number includes the regulator, the OLED and the USB bridge. **Use
-the table, not arithmetic from the SX1262 alone.**
-
-**The screen and BLE cost more than transmitting** — TX is 230 mA but the duty
-cycle is tiny, and the ESP32 staying awake to listen dominates. Multi-day
-runtimes need `is_power_saving`, which disables Bluetooth, WiFi and the screen:
-a beacon, not a messaging device.
-
-**USB/battery switching is automatic** — with USB attached the board runs from
-USB and charges the pack. USB together with the 5V pin is the one combination
-that is not allowed.
+Three things that matter: on a 3000 mAh pack that is **one day, not two**;
+**the screen and BLE cost more than transmitting**, because TX duty cycle is tiny
+while the ESP32 stays awake to listen; and **estimating from component
+datasheets gave 55 mA, about half the real figure** — use the table, not
+arithmetic from the SX1262. Multi-day runtimes need `is_power_saving`, which
+disables Bluetooth, WiFi and the screen: a beacon, not a messaging device.
 
 ## Serial port
 
