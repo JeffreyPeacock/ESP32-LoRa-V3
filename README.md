@@ -633,6 +633,7 @@ docs/mqtt-over-serial-proxy.md        MQTT without WiFi, so Bluetooth can stay o
 docs/flashing-meshtastic.md           flashing procedure, and the vendor script's bad offset
 docs/handoff-mail-relay.md            outbound mail brief for whoever runs the relay
 docs/meshtastic-rf-survey.md          what was measured on the air around FTG1 (#3)
+docs/meshtastic-app-behaviour.md      two Android-app traps that look like radio faults
 etc/reticulum/          Reticulum config for FTG1, and its backups
 etc/secrets/            device config exports and anything else local — gitignored
 etc/firmware/           vendor images kept for rollback — gitignored

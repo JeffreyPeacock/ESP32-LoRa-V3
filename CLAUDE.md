@@ -113,28 +113,24 @@ old note here said the published position was quantised to roughly km scale. Tha
 is no longer true: the radio now transmits the stored coordinate exactly, to every
 map and every node that hears it.
 
-Only one thing blunts the disclosure now, and it is the one that always did the
-real work: **the stored fix is a public landmark, not the operator's address.**
-Precision was blurring a decoy, which bought nothing and cost accuracy, so the
-owner chose to give it up.
-
-Note the ordering consequence: once a position is broadcast, a location-hinting
-**node name adds little further disclosure** — the position packet is more
-precise than the name. The name decision was made under the older assumption that
-no position was being sent.
+What blunts the disclosure is the thing that always did the real work: **the
+stored fix is a public landmark, not the operator's address.** Precision was
+blurring a decoy, which bought nothing and cost accuracy, so the owner gave it
+up. One ordering consequence: once a position is broadcast a location-hinting
+**node name adds little further disclosure**, because the packet is more precise
+than the name. The name was chosen assuming no position was being sent.
 
 ### Reduced precision is a shared bucket, not a location
 
 **Eight nodes reported the identical latitude `352059392`**, including FTG2 and
 six strangers. A coordinate several nodes share is a quantisation cell, not a
-place. This is what made FTG1 appear 1.4 km from its true position and land on
-exactly the spot FTG2 had occupied — they were rounded into the same bucket
-rather than being in the same field.
+place — which is why FTG1 appeared 1.4 km out, on the exact spot FTG2 had
+occupied: same bucket, not same field.
 
-Two consequences worth keeping. **Do not read a position on a map as a
-measurement** when the sender runs reduced precision. And **fixing it in the
-database does not work**: meshview stores whatever arrives, so a hand-edited row
-is overwritten by the next position packet. The only fix is at the radio.
+So **do not read a map position as a measurement** when the sender runs reduced
+precision. And **fixing it in the database does not work** — meshview stores
+whatever arrives, so a hand-edited row is overwritten by the next position
+packet. The only fix is at the radio.
 
 ## There is an active mesh in range of FTG1 (#3)
 
@@ -254,17 +250,13 @@ must have its own WiFi or Ethernet. A phone-proxied node can send outward but
 cannot be reached from another site, which is the half that matters for
 receiving. This governs #9 and #10.
 
-The full injection recipe, with the verified serial log, is in
-`docs/mqtt-broker-vps.md`.
-
-
 Keep `downlink_enabled` **off** on the primary channel. Downlink there would
 rebroadcast public-internet traffic onto the shared local mesh. It belongs only
 on the dedicated `mqtt` channel.
 
-Broker gotchas that cost real time — amqtt's protocol version and its
-anonymous-auth trap, mosquitto's localhost default — are in
-`docs/mqtt-broker-vps.md`.
+`docs/mqtt-broker-vps.md` has the injection recipe with its verified serial log,
+and the broker gotchas that cost real time — amqtt's protocol version and its
+anonymous-auth trap, mosquitto's localhost default.
 
 ## The diagnostic firmware is deaf to the mesh
 
@@ -277,10 +269,10 @@ The same mechanism explains what a node repeats. **What it can hear is a
 hardware filter** — sync word, SF, BW, CR, frequency — so LoRaWAN is rejected in
 the modem before firmware sees a byte. **What it forwards is firmware** — hop
 limit, dedup, `rebroadcastMode`. With `rebroadcastMode: ALL` a node relays
-packets on channels it **cannot decrypt**, which is how a shared LongFast
-carrier serves everyone's private channels, and why strangers' radios carry our
-traffic. Repeating is not a property of the radio: our `CLIENT` node already
-relays for others, and `ROUTER` mainly means well-sited infrastructure.
+packets on channels it **cannot decrypt**, which is how one shared LongFast
+carrier serves everyone's private channels, and why strangers' radios carry
+ours. **Repeating is not a property of the radio**: our `CLIENT` node already
+relays, and `ROUTER` mainly means well-sited.
 
 ### Sync words in use here
 
@@ -312,51 +304,22 @@ Two consequences:
   not isolation.** It stops decoding; it does not stop the energy, and CSMA
   still defers to it.
 
-## A stale Android bond makes the radio invisible, not just unpairable
 
-Cost real time on 2026-09-01. **Reflashing does not change the board's BLE
-address**, so a bond Android made under RNode survives the change to Meshtastic
-and Android keeps honouring it.
+## The Android app has two traps, and neither is a radio fault
 
-The symptom misleads: **the phone's scan does not list the device at all**,
-because Android excludes bonded devices from discovery. That looks exactly like a
-radio not advertising, but there is nothing to fix on the board.
+Both are in `docs/meshtastic-app-behaviour.md`, moved there because they bite
+only when a phone is involved and FTG1 has run WiFi (so no BLE) since
+2026-09-23. Keep the headlines, because each looks like a hardware failure:
 
-The tell is asymmetry — `meshtastic --ble-scan` from a Linux host finds it at the
-same moment. **Desktop sees it, phone does not → stale bond on the phone.** Fix
-it in Android's Bluetooth settings: forget the entry, then pair from inside the
-app. Power-cycling the radio and rebooting the phone were both tried and neither
-helps; the bond is on the phone.
-
-BLE advertises on **MAC + 1** (`…AC:5D` where the WiFi MAC is `…AC:5C`) —
-ordinary ESP32 behaviour. Do not read the mismatch as the wrong board.
-
-## A channel is not a direct message, and the app hides the difference
-
-Cost a wrong turn on 2026-09-02. In the Meshtastic app a conversation is keyed
-`ContactKey("$channel$destination")`, so what looks like one list is two kinds
-of thing:
-
-| Shown as | Key | Goes to |
-|---|---|---|
-| LongFast | `0^all` | everyone in range |
-| mqtt | `1^all` | everyone in range |
-| ftg-priv | `2^all` | everyone holding that key |
-| **FTG1** | `8!f6fb8e00` | **that node only** |
-
-`8` is `PKC_CHANNEL_INDEX`, a sentinel for public-key encryption — the radio has
-no channel 8. The app's own test is
-`isDirectMessage = channel == null || channel == PKC_CHANNEL_INDEX`.
-
-**Picking a channel sends a broadcast, however private the channel is.**
-`ftg-priv` keeps strangers from reading it, but it is still addressed to `^all`,
-so the listener running `dm_only = true` records it and does not forward it. To
-reach one node, select the *node* from the contact list, not a channel.
-
-**The app connects to one radio at a time.** It stores a single `deviceAddress`
-and `setDeviceAddress` replaces it. It does not forget the others — the picker
-is built from Android's bonded devices filtered to Meshtastic names — so
-switching is choosing a different entry, not re-pairing.
+- **A stale Android bond makes the radio invisible, not merely unpairable.**
+  Android hides bonded devices from scan results, so a bond made under RNode
+  survives reflashing to Meshtastic and the phone lists nothing. `--ble-scan`
+  from a Linux host finds it at the same moment; **desktop sees it and phone does
+  not means a stale bond on the phone.** Power-cycling and rebooting do not help.
+- **Picking a channel sends a broadcast, however private the channel is.** The
+  app keys a conversation `"$channel$destination"`, so a private channel is still
+  addressed to `^all` and the listener's `dm_only` ignores it. To reach one node,
+  select the *node*, not a channel.
 
 ## MQTT without WiFi, if Bluetooth must stay on
 
@@ -428,12 +391,12 @@ Meshtastic and RNode announce themselves in their own boot logs.
 **`heltec-dev.sh flash` overwrites whatever is there**, so run
 `meshtastic --export-config` first if the configuration matters.
 
-**Do not use Meshtastic's own `device-install.sh` on this board.** Version 2.7.26
-reads the real spiffs offset out of the `.mt.json` metadata and then flashes
-littlefs to a hardcoded `0x300000` anyway. On the heltec-v3 8MB scheme spiffs is
-at `0x670000`, and `0x300000` is inside `app1`, so the script erases the OTA
-image it wrote seconds earlier. The board still boots, which is why this is easy
-to miss. The by-hand procedure is in `docs/flashing-meshtastic.md`.
+**Do not use Meshtastic's own `device-install.sh` on this board.** 2.7.26 reads
+the real spiffs offset from `.mt.json` and then flashes littlefs to a hardcoded
+`0x300000` anyway. On the heltec-v3 8MB scheme spiffs is at `0x670000` and
+`0x300000` is inside `app1`, so it erases the OTA image it wrote seconds
+earlier. **The board still boots**, which is why this is easy to miss. Flash by
+hand per `docs/flashing-meshtastic.md`.
 
 FTG1 runs Meshtastic **2.7.26.54e0d8d**, target `heltec-v3`.
 
@@ -490,20 +453,18 @@ rather than from memory or from a web search:
 | Sleep, on battery | 15 µA |
 
 On a 3000 mAh pack that is roughly **one day**, not two. Estimating from
-component datasheets gave 55 mA and was about half the real figure — the
-whole-board number includes the regulator, the OLED and the USB bridge. Use the
-table, not arithmetic from the SX1262 alone.
+component datasheets gave 55 mA, about half the real figure, because the
+whole-board number includes the regulator, the OLED and the USB bridge. **Use
+the table, not arithmetic from the SX1262 alone.**
 
-Two consequences worth remembering:
+**The screen and BLE cost more than transmitting** — TX is 230 mA but the duty
+cycle is tiny, and the ESP32 staying awake to listen dominates. Multi-day
+runtimes need `is_power_saving`, which disables Bluetooth, WiFi and the screen:
+a beacon, not a messaging device.
 
-- **The screen and BLE cost more than transmitting.** TX is 230 mA but the duty
-  cycle is tiny; the ESP32 staying awake to listen dominates.
-- Multi-day runtimes need `is_power_saving`, which disables Bluetooth, WiFi and
-  the screen. That is a beacon, not a messaging device.
-
-The datasheet also confirms **USB/battery automatic switching**: with USB
-attached the board runs from USB and charges the pack. USB together with the 5V
-pin is the one combination that is not allowed.
+**USB/battery switching is automatic** — with USB attached the board runs from
+USB and charges the pack. USB together with the 5V pin is the one combination
+that is not allowed.
 
 ## Serial port
 
@@ -550,15 +511,15 @@ immune, a bare `/dev/ttyUSB0` is not.
 | `ttyACM1` | SparkFun Pro RF | **SAMD21** | RFM95 (SX1276) | **no** |
 
 **RNode firmware has no SAMD support of any kind** — `rnodeconf` targets AVR,
-ESP32 and nRF52, and contains zero references to SAMD. The two Pro RF boards
-cannot be RNodes and no amount of configuration changes that. They are a matched
-pair for plain point-to-point LoRa with RadioLib, which does interoperate with
-an SX1262 as long as frequency, bandwidth, spreading factor, coding rate, sync
-word, preamble and CRC all match.
+ESP32 and nRF52 and mentions SAMD nowhere, so the two Pro RF boards cannot be
+RNodes and no configuration changes that. They are a matched pair for plain
+point-to-point LoRa with RadioLib, which does interoperate with an SX1262 as
+long as frequency, bandwidth, spreading factor, coding rate, sync word, preamble
+and CRC all match.
 
-The Pro RF boards use the SAMD21's **native USB**, so they appear as
-`/dev/ttyACM*` rather than `/dev/ttyUSB*`, and they disappear from `/dev`
-briefly when they reset. A vanished `ttyACM` is usually a reset, not a fault.
+They use the SAMD21's **native USB**, so they appear as `/dev/ttyACM*` and
+vanish from `/dev` briefly when they reset. A missing `ttyACM` is usually a
+reset, not a fault.
 
 ## Toolchain layout
 
@@ -629,12 +590,11 @@ labels.
 
 Labels: `hardware` `meshtastic` `mqtt` `reticulum` `rf` `lorawan` `coordination`
 `decision`. Milestones: **Solo bring-up** (verifiable with only FTG1) and
-**Multi-site link** (needs an operator at SJC or SNA). The milestone test is
-verifiability, not subject matter.
+**Multi-site link** (needs an operator at SJC or SNA) — **the test is
+verifiability, not subject matter.**
 
-The board holds 17 items, so a single `gh project item-list` is complete and
-cheap — the paging workarounds needed on larger boards do not apply here. Still
-filter server-side where the option exists.
+The board holds 17 items, so one `gh project item-list` is complete and cheap.
+Still filter server-side where the option exists.
 
 **A per-issue `issue.projectItems` query is safe here but not everywhere.** It
 returns `totalCount 1` for all 17 issues on board #10, so `/fix-ticket` Step 0 is
