@@ -2,10 +2,11 @@
 
 > **Stale as of 2026-09-22, in two ways.** FTG1 was physically moved to **pi4**,
 > so the `port =` line in `etc/reticulum/config` names a socket on mahtoh that no
-> longer has a radio behind it. And **FTG2 is lost, presumed destroyed**, so
-> `etc/reticulum/config.node-b` describes a board that does not exist. Both files
-> are kept for their interface settings, which are still correct. Re-read the
-> serial path on whatever host the board is on before using either.
+> longer has a radio behind it. And **FTG2 was lost, presumed destroyed**, so
+> `etc/reticulum/config.node-b` describes a board that no longer exists — but a
+> **replacement is in hand as of 2026-09-25**, so keep that file. Both files are
+> kept for their interface settings, which are still correct. Re-read the serial
+> path, and for FTG2 the MAC as well, before using either.
 
 
 Saved 2026-09-01, immediately before both Heltecs were reflashed with

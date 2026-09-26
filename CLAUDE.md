@@ -197,9 +197,18 @@ still needs no internet — the mesh in #3 is all RF — but this node is no lon
 an ordinary case.
 
 **FTG1 lives on pi4 since 2026-09-22**, USB-attached, and **nothing holds the
-serial port**: the MQTT proxy that used to is stopped and disabled. **FTG2 is
-gone**, lost and presumed destroyed, and removed from the NodeDB, the peer ledger
-and meshview.
+serial port**: the MQTT proxy that used to is stopped and disabled.
+
+**FTG2 was lost and presumed destroyed on 2026-09-22** and removed from the
+NodeDB, the peer ledger and meshview. **A replacement board is in hand as of
+2026-09-25, so keep every FTG2 configuration file and document — do not delete
+them on the strength of "presumed destroyed".** The node ID does not transfer:
+it is derived from the MAC, so `44:1B:F6:FA:AC:5C` identifies only the lost
+board, and the new MAC must be read off the new one.
+
+The radio-side setup that makes a node report into meshview is in
+`docs/meshtastic-gateway-setup.md`, written host-agnostically so it can be
+reproduced elsewhere; this project's host specifics are in the README.
 
 **The listener on mahtoh is stopped and disabled.** It pointed at
 `…usb-0:3:1.0-port0`, a path with no radio behind it since 2026-09-22. Re-point
@@ -480,7 +489,7 @@ immune, a bare `/dev/ttyUSB0` is not.
 | Device | Board | MCU | Radio | RNode? |
 |---|---|---|---|---|
 | on **pi4** | Heltec V3 (FTG1) | ESP32-S3 | SX1262 | capable; runs Meshtastic |
-| ~~Heltec V3 #2 (FTG2)~~ | **lost, presumed destroyed 2026-09-22** | — | — | — |
+| Heltec V3 #2 (FTG2) | replacement in hand, **MAC unread** | ESP32-S3 | SX1262 | capable |
 | `ttyACM0` | SparkFun Pro RF | **SAMD21** | RFM95 (SX1276) | **no** |
 | `ttyACM1` | SparkFun Pro RF | **SAMD21** | RFM95 (SX1276) | **no** |
 

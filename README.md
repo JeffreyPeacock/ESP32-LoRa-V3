@@ -396,8 +396,14 @@ another RNode operator would most likely arrive on.
 ## Live configuration
 
 **FTG1 moved to pi4 on 2026-09-22** and now serves a public meshview site. It is
-no longer attached to mahtoh. **FTG2 is lost and presumed destroyed**, and has
-been removed from the radio's node database, the peer ledger and meshview.
+no longer attached to mahtoh.
+
+**FTG2 was lost and presumed destroyed on 2026-09-22**, and was removed from the
+radio's node database, the peer ledger and meshview. **A replacement board is in
+hand as of 2026-09-25, so FTG2's configuration and documentation are kept, not
+deleted.** One thing does not carry over: the node ID is derived from the MAC,
+so the replacement is a different node. `44:1B:F6:FA:AC:5C` identifies only the
+lost board, and the new MAC has to be read off the new one.
 
 | | FTG1 |
 |---|---|
@@ -419,6 +425,15 @@ been removed from the radio's node database, the peer ledger and meshview.
 | Serial path | `…platform-fd500000.pcie…usb-0:1.3:1.0-port0` on pi4 |
 | udev rule | installed on pi4 2026-09-25, `99-heltec-cp210x.rules`; survives reboot |
 | Set by | WFAI-Ops #264, #265 — both closed 2026-09-25 |
+
+**This setup is two separable halves, and only one of them is general.** The
+radio-side configuration above — MQTT, WiFi, per-channel uplink, position — is
+what makes any Meshtastic node report into any meshview instance, and it is
+written up for reuse in
+[docs/meshtastic-gateway-setup.md](docs/meshtastic-gateway-setup.md), which
+states the host requirement as three interface points rather than a recipe. The
+rest of this section is **this project's own host**, kept here because it is
+what we actually run. None of it is required to reproduce the result.
 
 Three user services run on pi4 under the `ftg` account: `meshview-db`,
 `meshview-web` and `meshview-mdns`. `meshview-proxy` is stopped and disabled: it
@@ -480,7 +495,7 @@ dependency.
 
 | | | Set by |
 |---|---|---|
-| Stack | Meshtastic — **not currently loaded** | #1 |
+| Stack | Meshtastic | #1 |
 | Version | `2.7.26.54e0d8d` | #1 |
 | Target | `heltec-v3` | #1 |
 | Node ID | `!f6fb8e00` | derived from the MAC, not configurable |
@@ -642,6 +657,7 @@ docs/meshtastic-app-behaviour.md      two Android-app traps that look like radio
 docs/ftg1-position-and-privacy.md     the fixed position, the offset, and what it costs
 docs/meshtastic-direct-messages.md    why a DM needs the recipient's key first
 docs/power-budget.md                  whole-board current draw, and the runtime it gives
+docs/meshtastic-gateway-setup.md      radio-side setup that feeds meshview, any host
 etc/reticulum/          Reticulum config for FTG1, and its backups
 etc/secrets/            device config exports and anything else local — gitignored
 etc/firmware/           vendor images kept for rollback — gitignored
