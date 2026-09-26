@@ -113,12 +113,23 @@ old note here said the published position was quantised to roughly km scale. Tha
 is no longer true: the radio now transmits the stored coordinate exactly, to every
 map and every node that hears it.
 
-What blunts the disclosure is the thing that always did the real work: **the
-stored fix is a public landmark, not the operator's address.** Precision was
-blurring a decoy, which bought nothing and cost accuracy, so the owner gave it
-up. One ordering consequence: once a position is broadcast a location-hinting
-**node name adds little further disclosure**, because the packet is more precise
-than the name. The name was chosen assuming no position was being sent.
+What blunts the disclosure is that **the stored fix is offset from where the
+radio actually is, and is a public landmark rather than the operator's address.**
+The offset's size and bearing are recorded **only** in `etc/secrets/`. They must
+never appear here: this repository is public and the broadcast coordinate is
+public too, so publishing the offset would hand over the real location.
+
+**Correction — this file used to say precision was "blurring a decoy, which
+bought nothing".** Half wrong. It did cost accuracy, and that half stands. But
+quantisation published an *area* where precision 32 publishes a *point*, and the
+cell is several km on a side (below), so dropping to 32 gave up real protection
+rather than none. What quantisation never gave was **secrecy** — the grid is
+public and deterministic, so anyone who knows it recovers the cell. Area
+uncertainty, not a hidden offset.
+
+One ordering consequence: once a position is broadcast a location-hinting **node
+name adds little further disclosure**, because the packet is more precise than
+the name. The name was chosen assuming no position was being sent.
 
 ### Reduced precision is a shared bucket, not a location
 
@@ -127,10 +138,30 @@ six strangers. A coordinate several nodes share is a quantisation cell, not a
 place — which is why FTG1 appeared 1.4 km out, on the exact spot FTG2 had
 occupied: same bucket, not same field.
 
+The grid was **confirmed, not guessed**: the step is `2^18` in units of 1e-7
+degrees (0.0262144°, roughly 2.9 km N–S and 2.4 km E–W at this latitude), and
+snapping the stored coordinate to it reproduces `352059392` exactly. That bucket
+and the grid are both public, so recording them here discloses nothing.
+
 So **do not read a map position as a measurement** when the sender runs reduced
 precision. And **fixing it in the database does not work** — meshview stores
 whatever arrives, so a hand-edited row is overwritten by the next position
 packet. The only fix is at the radio.
+
+### The offset costs nothing on the air and everything in geometry
+
+**Nothing the radio does is affected.** Meshtastic floods with a hop limit rather
+than routing by geography, so a fixed position sets no transmit parameter, no
+neighbour selection and no rebroadcast decision. Free-space loss changes by a
+fraction of a dB over any path of interest here.
+
+**But the offset is large compared with the first Fresnel radius at these path
+lengths**, so **terrain profiles, line-of-sight checks and antenna siting must
+use the real coordinate from `etc/secrets/`**, never the broadcast one. Treat any
+existing path analysis as drawn from the broadcast position unless it says
+otherwise. `peers-report.sh` reads its origin from the device, so its distances
+and its "within 15 mi" count are measured from the broadcast position too — small
+against that threshold, but not zero.
 
 ## There is an active mesh in range of FTG1 (#3)
 
