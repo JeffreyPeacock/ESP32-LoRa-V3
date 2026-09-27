@@ -103,3 +103,46 @@ uplink-only account whose reads are filtered by ACL.
 come from their own tools — <https://view.azmsh.net/>,
 <https://map.azmsh.net/>, <https://metrics.azmsh.net/> — or from a community
 member. Do not read the silence as a fault.
+
+## Monitoring the uplink
+
+A systemd **user** timer on pi4 checks the bridge every 15 minutes:
+`azmsh-bridge-check.timer` running
+`~/deployments/prod/bin/check-azmsh-bridge.sh`. Lingering is already enabled for
+the `ftg` account, so it runs with nobody logged in. It writes
+`~/deployments/prod/data/azmsh-bridge.status.json` and one journal line per run.
+
+**It is not a "did bytes_sent go up" check, and that distinction is the whole
+point.** MQTT keepalives increment the socket's byte counter on their own, so a
+bridge whose publishes were being rejected would still show the counter
+climbing. The very first scheduled run demonstrated it: `bytes_delta=2` with
+zero packets, which is exactly one keepalive.
+
+So the check compares the byte delta against an **independent expectation** —
+how many packets this host's own meshview database ingested under
+`msh/US/AZ/Flagstaff/` over the same window. A published message is at least its
+44-character topic plus a payload, so the floor is 40 bytes per packet.
+
+Five outcomes, deliberately distinct:
+
+| State | Meaning |
+|---|---|
+| `OK` | packets ingested locally and at least the floor of bytes left the bridge |
+| `PROBLEM` | no established session, or packets ingested locally and the bytes did not follow |
+| `INCONCLUSIVE` | nothing ingested locally either, so the mesh was quiet and this window proves nothing |
+| `RECONNECTED` | the byte counter went backwards, so the session is new; baseline re-taken |
+| `BASELINE` | first run, or the run after a reconnect; nothing to compare yet |
+| `CANNOT_CHECK` | the database, interpreter, `ss` or DNS was unavailable |
+
+`INCONCLUSIVE` exists because at one packet every ~140 s a short quiet spell is
+ordinary, and reporting it as either health or a fault would be wrong. 15
+minutes was chosen so a genuinely empty window is surprising rather than
+routine.
+`consecutive_problems` in the status file counts runs, so a single blip is
+distinguishable from a sustained failure.
+
+**What it cannot tell you** is whether Arizona accepts what we send. It proves
+data leaves this host. Their tools are all behind Keycloak SSO —
+`view.azmsh.net`, including `/firehose`, and `map.azmsh.net` all redirect to
+`auth.azmsh.net` — so confirmation of their ingest needs a logged-in look or a
+question in their Discord.
