@@ -146,3 +146,79 @@ data leaves this host. Their tools are all behind Keycloak SSO —
 `view.azmsh.net`, including `/firehose`, and `map.azmsh.net` all redirect to
 `auth.azmsh.net` — so confirmation of their ingest needs a logged-in look or a
 question in their Discord.
+
+## "MQTT Gateway: No" on their dashboard is a meshview bug
+
+FTG1 showed **MQTT Gateway: No** on the community's meshview while being a fully
+working gateway. Nothing on our side was wrong and nothing in their instructions
+was missed. **There is no Meshtastic setting called "MQTT Gateway"** — it is a
+derived column, `node.is_mqtt_gateway`, that meshview sets for itself.
+
+### Why it happens
+
+In `meshview/mqtt_store.py` the flag is a one-shot `UPDATE` behind a permanent
+in-process cache:
+
+```python
+node_id = int(env.gateway_id[1:], 16)
+
+if node_id not in MQTT_GATEWAY_CACHE:
+    MQTT_GATEWAY_CACHE.add(node_id)                  # cached first
+    await session.execute(
+        update(Node).where(Node.node_id == node_id)  # UPDATE, not upsert
+        .values(is_mqtt_gateway=True)
+    )
+```
+
+If no `Node` row exists when the first gatewayed packet arrives, the `UPDATE`
+matches zero rows — but the id is already cached, so it never retries. `Node`
+rows are created only by the `NODEINFO_APP` and `MAP_REPORT_APP` handlers; a
+position packet only updates a row that already exists. So the flag stays unset
+until the process restarts, because `load_gateway_cache()` preloads only nodes
+already flagged `True`.
+
+**Our timeline made it certain.** The bridge went live at 22:52 and immediately
+forwarded packets FTG1 had gatewayed for *other* nodes, each carrying
+`gateway_id = !f6fb8e00`. FTG1's own NodeInfo did not reach them until 23:19, so
+the cache was poisoned 27 minutes before the row existed.
+
+This project's own meshview shows **Yes** only because FTG1's row had existed
+for days before its uplink began.
+
+### The fix is theirs, and it is one step
+
+Restart the meshview ingest process. The stale cache entry is dropped, the row
+now exists, and the next gatewayed packet sets the flag. Or set it directly:
+`UPDATE node SET is_mqtt_gateway = 1 WHERE node_id = 4143681024;`
+
+### Upstream status
+
+Reported as
+[meshview#153](https://github.com/pablorevilla-meshtastic/meshview/issues/153)
+on 2026-06-10 by `cvaldess`, with the same root cause and three suggested fixes.
+Closed 2026-09-09 with "I have make this changes into the develop branch".
+
+**That change is not present on `develop` as of 2026-09-27.** Verified by
+reading the branch: the `MQTT_GATEWAY_CACHE.add()`-then-`UPDATE` block is
+unchanged, the file contains no `rowcount` check, and the only upserts are for
+`daily_snapshot`, `packet` and `packet_seen`, none for `Node`. The same block is
+in the 3.0.8 release and in `master`, which is what we run.
+
+**An earlier note here claimed `develop`'s `ensure_node_exists` fixed this as a
+side effect. That was wrong.** Its only call site sits *after* the gateway block
+and is passed the packet's **sender**, not its gateway, so it cannot create the
+row in time.
+
+### Three suggestions from the community that do not apply
+
+Offered in Discord, and all three were already satisfied or are contradicted by
+the code:
+
+- *"It takes a few days of consistent packets to become Yes."* It does not. The
+  flag is a single `UPDATE` on the first packet carrying a `gateway_id`. There
+  is no counter and no time threshold anywhere in the file.
+- *"Make sure uplink is on for the primary channel and Okay to MQTT is on."*
+  Both were already on, read back from the device.
+- *"Make sure TLS is disabled."* Already disabled, and our node does not talk to
+  their broker at all — the bridge does, on plain 1883. Their host does not even
+  listen on 8883.
