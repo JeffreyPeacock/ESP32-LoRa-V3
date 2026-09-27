@@ -422,6 +422,7 @@ lost board, and the new MAC has to be read off the new one.
 | Channels 1, 2 uplink | off |
 | Position | fixed, a public landmark, **`position_precision: 32`** (was 13) |
 | Intervals | `nodeInfoBroadcastSecs` 10800, `positionBroadcastSecs` 3600, both at default |
+| Power | USB from pi4 **plus a 3000 mAh pack** (2026-09-26) — carries ~20–26 h if USB or pi4 power is lost |
 | Serial path | `…platform-fd500000.pcie…usb-0:1.3:1.0-port0` on pi4 |
 | udev rule | installed on pi4 2026-09-25, `99-heltec-cp210x.rules`; survives reboot |
 | Set by | WFAI-Ops #264, #265 — both closed 2026-09-25 |
@@ -615,6 +616,15 @@ device you message from.
 
 USB and battery switch over automatically: with USB attached the board runs from
 USB and charges the pack.
+
+**FTG1 has a pack fitted, so it survives a power cut — but not as a gateway.**
+If USB is unplugged or pi4 powers off, FTG1 keeps running and stays a full RF
+participant, yet **the broker is on pi4**, so MQTT uplink fails and meshview
+ingests nothing while the node itself looks healthy. If house power goes, the
+access point goes with it and FTG1 becomes an RF-only node, which is the case
+Meshtastic is for. `on_battery_shutdown_after_secs` is 0, so it runs the pack
+flat rather than stopping. Full reasoning in
+[docs/power-budget.md](docs/power-budget.md).
 
 ## On range
 

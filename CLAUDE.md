@@ -37,7 +37,12 @@ wrong. `include/board_pins.h` is the authority; use it, not the variant.
 - **A voltage on the battery sense line does not prove a battery is fitted.**
   With USB attached and no pack, the charger output floats near 4.2 V with
   nothing to sink it, and Meshtastic duly reports ~4.14 V and ~96%. Confirm a
-  pack by looking at the connector, never from a reading.
+  pack by looking at the connector, never from a reading. **FTG1 does have a
+  3000 mAh pack as of 2026-09-26**, confirmed by looking, so its reading is real
+  — but still uncalibrated, because `VBAT_DIVIDER` is unverified (#11) and the
+  `ADC_CTRL` polarity is unsettled (#13). This file previously implied no pack
+  was fitted, which made the battery figure look meaningless when it is now the
+  only signal that FTG1 has lost mains power.
 - `VBAT_DIVIDER` is 4.9 and is **uncalibrated** — verify against a meter before
   trusting any reading.
 - The OLED is on its own I2C bus (SDA 17 / SCL 18), not the header pins.
