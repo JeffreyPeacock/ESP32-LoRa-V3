@@ -246,6 +246,14 @@ PATTERNS = [
     # a useful signal that a channel is unencrypted.
     ('psk (json, from --info)',
      r'("psk"\s*:\s*")(?!\*)([A-Za-z0-9+/=]{8,})'),
+    # The same JSON shape carries the BROKER password in `--info`, as
+    # "password": "<value>". The psk pattern above was added for the psk form on
+    # 2026-09-26 and not generalised, so the mqtt password leaked the next day from
+    # a grep that filtered psk but not password. This covers every secret-bearing
+    # key in that shape, and matches any character up to the closing quote because
+    # broker passwords are not restricted to base64.
+    ('secret (json, from --info)',
+     r'("(?:password|passwd|secret|token|api_key|private_key|wifi_psk)"\s*:\s*")(?!\*)([^"]{4,})'),
     ('psk (hex arg)',
      r'(--ch-set\s+psk\s+)(0x[0-9a-fA-F]{16,})'),
     ('mqtt password',

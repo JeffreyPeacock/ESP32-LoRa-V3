@@ -222,3 +222,28 @@ the code:
 - *"Make sure TLS is disabled."* Already disabled, and our node does not talk to
   their broker at all — the bridge does, on plain 1883. Their host does not even
   listen on 8883.
+
+## Two settings that were on paper but off in fact
+
+Both read back correctly and neither transmitted. Found only by reading the
+whole module block from `--info` rather than the single field that had been set.
+
+**`telemetry.device_telemetry_enabled` was `false`** while
+`device_update_interval` was 3600. No telemetry was sent for 69 minutes after a
+reboot. The community's own list names these as two separate entries, "Broadcast
+Device Metrics" and "Device Metrics Update Interval", and they were read here as
+one setting. With the flag set, a TELEMETRY packet followed within a minute.
+
+**`mqtt.map_report_settings.should_report_location` was `false`** while map
+reporting was enabled with a 6-hour interval and precision 32. The map reports
+would have gone out carrying no position, which is the one thing a map needs.
+
+The general rule is in `CLAUDE.md`: a feature has an enable *and* an interval,
+and a value that reads back correctly proves only that the field was stored.
+
+**One consequence to keep in view.** Device telemetry now publishes FTG1's
+battery to the community, and the figure is wrong: the device reports
+`batteryLevel: 101` at `4.27 V`, which is above a Li-ion cell's full charge.
+`VBAT_DIVIDER` is uncalibrated (#11) and the `ADC_CTRL` polarity is unsettled
+(#13), so the pack is real but the scaling over-reads. Channel utilisation from
+the same packet is sound and is the part the community actually uses.

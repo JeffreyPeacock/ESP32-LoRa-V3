@@ -382,10 +382,22 @@ three `neighbor_info` fields read back unchanged. Setting them individually
 worked immediately. So the failure is **per module inside the transaction**, not
 per field: write module config one field at a time and read each one back.
 
-**Some settings are rejected unless a dependency is written first.**
-`mqtt.map_reporting_enabled true` was silently refused while
-`map_report_settings.publish_interval_secs` was 0. Setting the interval, then
-enabling, worked. A rejected write looks exactly like a successful one.
+**A feature usually has a separate enable from its interval, and setting the
+interval alone does nothing.** Three instances on 2026-09-26/27, all of which
+read back correctly and none of which transmitted:
+
+- `telemetry.device_update_interval 3600` with `device_telemetry_enabled`
+  **false** — no telemetry for 69 minutes. The flag is the switch.
+- `mqtt.map_report_settings.should_report_location` **false** — map reports
+  would have carried no position at all.
+- `mqtt.map_reporting_enabled true` was silently *refused* while
+  `publish_interval_secs` was 0; set the interval first, then enable.
+
+So **reading a value back is not proof a feature works** — it proves only that
+the field was stored. Confirm the packet on the air, from the database or
+broker.
+Read the whole module block from `--info` rather than the one field you set:
+`grep -A16 '"telemetry"'` is what exposed `deviceTelemetryEnabled`.
 
 **The radio's TCP API has few client slots, and exhausting them looks like a
 dead radio.** After many CLI sessions in quick succession, every call failed
