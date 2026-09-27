@@ -658,6 +658,7 @@ docs/ftg1-position-and-privacy.md     the fixed position, the offset, and what i
 docs/meshtastic-direct-messages.md    why a DM needs the recipient's key first
 docs/power-budget.md                  whole-board current draw, and the runtime it gives
 docs/meshtastic-gateway-setup.md      radio-side setup that feeds meshview, any host
+scripts/as-owner.sh                   run a gh command as the owning account
 etc/reticulum/          Reticulum config for FTG1, and its backups
 etc/secrets/            device config exports and anything else local — gitignored
 etc/firmware/           vendor images kept for rollback — gitignored

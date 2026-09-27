@@ -571,6 +571,17 @@ Mesh**, project **#10**, owned by the **user** `JeffreyPeacock` — GraphQL uses
 **Priority is a board field here, not a label.** Do not create `priority:pN`
 labels.
 
+**Everything here goes out as `JeffreyPeacock`** — the repo, the board, and any
+cross-component ticket filed on this project's behalf. Two accounts are logged
+into `gh` on this machine because the owner runs several projects at once, and
+`WhiteFeatherAI` has **`pull` only** on this repo. The failure is misleading:
+creating an issue still succeeds, and the block appears later as
+`WhiteFeatherAI does not have the correct permissions to execute CloseIssue`,
+which reads like a token-scope problem rather than the wrong account. Wrap `gh`
+in `scripts/as-owner.sh`, which switches, runs and switches back. git needs no
+wrapper: `user.name` and `user.email` are pinned in this repository's own config,
+so a global change made for another project cannot reach it.
+
 | Thing | ID |
 |---|---|
 | Project | `PVT_kwHOAdChXs4BgeW5` |
@@ -631,6 +642,7 @@ IDs, gates and hardware realities of this repo.
 | `/priority-review` | Rebuild `docs/ticket-priority-review.md`, the at-a-glance Quick View |
 | `/export-transcript` | Render the session log as text, with secrets masked |
 | `scripts/peers-report.sh` | Rebuild `docs/peers.local.md` from the radio's NodeDB |
+| `scripts/as-owner.sh` | Run a `gh` command as `JeffreyPeacock`, then restore the previous account |
 | `/create-plan` | Enter plan mode for a task |
 | `/trim-claude-md` | Bring this file back under 40k without losing findings |
 | `/prep-compaction` | Fold session findings into the docs before context is lost |
