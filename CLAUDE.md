@@ -131,6 +131,22 @@ headlines, because each of these is easy to get wrong from memory:
   coordinate**, and any existing path analysis should be assumed to have used the
   broadcast one.
 
+## FTG1 follows the Arizona community's conventions
+
+Details in [`docs/arizona-mesh-community.md`](docs/arizona-mesh-community.md);
+credentials in `etc/secrets/azmsh-mqtt.conf`. Two things are easy to get wrong:
+
+- **The community runs two radio configurations.** Phoenix and Tucson metro use
+  Medium-Fast on slot 18; everywhere else, Flagstaff included, uses **Long-Fast
+  on slot 20**, which are the Meshtastic defaults. **Do not "upgrade" FTG1 to
+  the metro setting** — it takes the radio off the mesh it can actually hear.
+  `lora.channel_num` is 0, meaning derived; an explicit 20 was rejected as a
+  change because if the derivation were ever not 20 it would cost every peer.
+- **We bridge to their broker, we do not repoint the radio at it.** A node has
+  exactly one `mqtt.address`, and ours must stay on pi4's broker or meshview
+  stops ingesting. FTG1 publishes under `msh/US/AZ/Flagstaff` and an
+  outbound-only mosquitto bridge forwards it.
+
 ## There is an active mesh in range of FTG1 (#3)
 
 **FTG1 is not isolated.** 185 peers in the ledger as of 2026-09-25, 101 with
@@ -359,6 +375,26 @@ position with `--setlat/--setlon/--setalt` makes the radio transmit one
 immediately, which is the way to test a position change without waiting out
 `position_broadcast_secs`.
 
+**A batched `--set` can silently drop one module's entire write.** On 2026-09-26
+eight fields were set in one invocation; all eight printed `Set …`, the run
+printed `Writing neighbor_info configuration to device`, it exited 0, and the
+three `neighbor_info` fields read back unchanged. Setting them individually
+worked immediately. So the failure is **per module inside the transaction**, not
+per field: write module config one field at a time and read each one back.
+
+**Some settings are rejected unless a dependency is written first.**
+`mqtt.map_reporting_enabled true` was silently refused while
+`map_report_settings.publish_interval_secs` was 0. Setting the interval, then
+enabling, worked. A rejected write looks exactly like a successful one.
+
+**The radio's TCP API has few client slots, and exhausting them looks like a
+dead radio.** After many CLI sessions in quick succession, every call failed
+with `BrokenPipeError` on write while the radio was entirely healthy: port 4403
+still accepted connections, the web UI returned 200, and it was still publishing
+to the broker. Use the serial port instead: FTG1 is USB-attached to pi4, which
+has its own CLI at `~ftg/.pyenv/versions/3.13.5/bin/meshtastic`. Note it is
+2.7.11 against 2.7.26 firmware.
+
 ## The Meshtastic CLI echoes every value it sets
 
 `meshtastic --set mqtt.password X` prints `Set mqtt.password to X`. A broker
@@ -530,9 +566,13 @@ All scripts must pass `shellcheck -x` with no output. Run it before finishing.
 - **`mosquitto_sub` block-buffers when its stdout is a pipe.** Under `timeout`
   it is killed before the buffer flushes, so it prints **nothing at all** — no
   partial line, no error — and that is indistinguishable from a subscription
-  that matched nothing. Two samples were lost to this on 2026-09-25. Redirect to
-  a file and read the file afterwards, or use `stdbuf -oL`. The same applies to
-  any long-running producer sampled under `timeout`.
+  that matched nothing. Two samples were lost to this on 2026-09-25. **This file
+  used to say to redirect to a file and read it afterwards. That does not work**
+  — a file is not a tty either, so the stream is still block-buffered and
+  SIGTERM discards the buffer; a third sample was lost that way on 2026-09-26.
+  Use `stdbuf -oL`, and prefer the producer's own clean-exit timeout where it
+  has one (`mosquitto_sub -W <secs>`). The same applies to any long-running
+  producer sampled under `timeout`.
 - **A zero from a line-based check usually means the check is broken.** Four
   variants cost real time on 2026-09-25, each looking like an absent finding:
   `cmd | sed` under `||` reports *sed's* exit status, so the fallback never

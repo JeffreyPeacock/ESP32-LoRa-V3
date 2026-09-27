@@ -415,13 +415,17 @@ lost board, and the new MAC has to be read off the new one.
 | Bluetooth | **off in practice** — WiFi is on and the two are exclusive |
 | WiFi | **on** since 2026-09-23, so the radio reaches the broker itself |
 | MQTT | **enabled**, `10.0.0.170`, root `msh/US` |
-| MQTT topic | `msh/US/2/e/LongFast/!f6fb8e00` — `<root>/<region>/2/e/<channel>/<gateway>` |
+| MQTT topic | `msh/US/AZ/Flagstaff/2/e/LongFast/!f6fb8e00` — `<root>/2/e/<channel>/<gateway>`, root changed 2026-09-26 to the Arizona community convention |
 | MQTT transport | **direct over WiFi**; the serial proxy is retired |
 | MQTT options | encryption on, TLS off, JSON off |
 | Channel 0 uplink | **enabled** — this is what republishes what we hear |
 | Channels 1, 2 uplink | off |
 | Position | fixed, a public landmark, **`position_precision: 32`** (was 13) |
-| Intervals | `nodeInfoBroadcastSecs` 10800, `positionBroadcastSecs` 3600, both at default |
+| Intervals | `nodeInfoBroadcastSecs` **43200**, `positionBroadcastSecs` **43200**, smart broadcast off — Arizona stationary profile, 2026-09-26 |
+| Telemetry | device metrics **every 3600 s** (was disabled); neighbour info on, 39600 s, over LoRa |
+| Map report | **on**, 21600 s, position precision 32 |
+| OK to MQTT | **true** — lets other gateways uplink our packets, as the community asks |
+| Community | feeds the Arizona Meshtastic broker via an outbound-only mosquitto bridge — [docs/arizona-mesh-community.md](docs/arizona-mesh-community.md) |
 | Power | USB from pi4 **plus a 3000 mAh pack** (2026-09-26) — carries ~20–26 h if USB or pi4 power is lost |
 | Serial path | `…platform-fd500000.pcie…usb-0:1.3:1.0-port0` on pi4 |
 | udev rule | installed on pi4 2026-09-25, `99-heltec-cp210x.rules`; survives reboot |
@@ -445,8 +449,11 @@ the Meshtastic CLI and esptool all run without stopping anything. The site is re
 `https://meshview.flagstafftechgroup.org/` through a reverse proxy on another
 host.
 
-meshview subscribes to **`msh/US/2/e/#`**, narrowed from `msh/#` on 2026-09-25
-once the radio's topic was known. It is deliberately not pinned to the channel or
+meshview subscribes to **`msh/US/2/e/#` and `msh/US/AZ/#`**, the first narrowed
+from `msh/#` on 2026-09-25 once the radio's topic was known and the second added
+on 2026-09-26 when the root moved to the Arizona convention. Both are listed
+deliberately, so the root change cost no ingest; the old one can go once nothing
+wants it. It is deliberately not pinned to the channel or
 to the gateway node id, because those are the two levels that can legitimately
 change and pinning them would silently drop traffic. Its map queries a **10-day**
 activity window, widened to 90 days while the database was being seeded and
@@ -668,6 +675,7 @@ docs/ftg1-position-and-privacy.md     the fixed position, the offset, and what i
 docs/meshtastic-direct-messages.md    why a DM needs the recipient's key first
 docs/power-budget.md                  whole-board current draw, and the runtime it gives
 docs/meshtastic-gateway-setup.md      radio-side setup that feeds meshview, any host
+docs/arizona-mesh-community.md        the AZ community conventions FTG1 follows
 scripts/as-owner.sh                   run a gh command as the owning account
 etc/reticulum/          Reticulum config for FTG1, and its backups
 etc/secrets/            device config exports and anything else local — gitignored
