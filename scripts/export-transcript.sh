@@ -236,6 +236,16 @@ PATTERNS = [
      r'(wifiPsk\s*:\s+)(?!\*)(\S{4,})'),
     ('psk (yaml)',
      r'(\bpsk\s*:\s+)(?!\*)([A-Za-z0-9+/=]{16,})'),
+    # `meshtastic --info` prints every channel key as JSON: "psk": "<base64>".
+    # CLAUDE.md has warned about that wording since 2026-08, but no pattern here
+    # matched it: the yaml pattern above needs whitespace after the colon and the
+    # JSON form has a quote there instead. Two secondary-channel keys reached a
+    # session log on 2026-09-26 through a grep for `channelNum`, because the
+    # channel index lines carry the key alongside it. {8,} so the well-known
+    # default LongFast key AQ== stays readable; it is public and its presence is
+    # a useful signal that a channel is unencrypted.
+    ('psk (json, from --info)',
+     r'("psk"\s*:\s*")(?!\*)([A-Za-z0-9+/=]{8,})'),
     ('psk (hex arg)',
      r'(--ch-set\s+psk\s+)(0x[0-9a-fA-F]{16,})'),
     ('mqtt password',
@@ -246,6 +256,14 @@ PATTERNS = [
     # Covers ini/toml (= ) and yaml (: ) for any key ending in a secret word.
     ('secret in a config file',
      r'^(\s*\S*(?:password|passwd|psk|secret|token|api_key)\s*[=:]\s*)(?!\*)(\S{4,})'),
+    # Credentials pasted as PROSE rather than as config. The Arizona Meshtastic
+    # community publishes its shared broker password in Discord as
+    # "- **Password:** <value>", and that reached this session on 2026-09-26.
+    # The pattern above missed it twice over: it has no re.I so "Password" with a
+    # capital P does not match, and the markdown emphasis sits between the key and
+    # the colon. Inline (?i) because the shared subn() call only passes re.M.
+    ('secret pasted as prose',
+     r'(?i)^(\s*(?:[-*+]\s+)?\*{0,2}(?:password|passwd|psk|secret|token|api[_ ]?key)\*{0,2}\s*:\s*\*{0,2}\s*)(?!\*)(\S{4,})'),
     # The Meshtastic CLI echoes every value it sets, as "Set <key> to <value>".
     # The pattern above expects "mqtt.password <value>" and masks the word "to"
     # instead. This covers the CLI's actual wording for any secret-bearing key.
