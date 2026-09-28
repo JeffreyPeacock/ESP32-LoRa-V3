@@ -676,6 +676,7 @@ docs/meshtastic-direct-messages.md    why a DM needs the recipient's key first
 docs/power-budget.md                  whole-board current draw, and the runtime it gives
 docs/meshtastic-gateway-setup.md      radio-side setup that feeds meshview, any host
 docs/arizona-mesh-community.md        the AZ community conventions FTG1 follows
+docs/shell-conventions.md             shell rules, and the false-zero traps
 scripts/as-owner.sh                   run a gh command as the owning account
 etc/reticulum/          Reticulum config for FTG1, and its backups
 etc/secrets/            device config exports and anything else local — gitignored

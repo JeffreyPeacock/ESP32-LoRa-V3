@@ -185,3 +185,44 @@ Three things, stated as an interface so any host satisfies them:
   leave the map unchanged**, if the map filters on an activity window and the
   backfilled rows carry their original timestamps. That is correct behaviour:
   a node last heard weeks ago should not claim to be current.
+
+## A setting that reads back correctly may still do nothing
+
+Three instances on 2026-09-26 and 27, all of which read back the value that was
+written and none of which transmitted. Each cost time because the CLI reported
+success and the read-back agreed.
+
+**A feature usually has an enable separate from its interval.**
+
+- `telemetry.device_update_interval` was 3600 while
+  `telemetry.device_telemetry_enabled` was **false**. No telemetry for 69
+  minutes after a reboot. With the flag set, a packet followed within a minute.
+  The Arizona guidance lists these as two entries, "Broadcast Device Metrics"
+  and "Device Metrics Update Interval", and they are easy to read as one.
+- `mqtt.map_report_settings.should_report_location` was **false** while map
+  reporting was enabled with an interval and a precision. The reports would
+  have gone out carrying no position, which is the only thing a map needs.
+
+**Some writes are refused until a dependency exists.**
+`mqtt.map_reporting_enabled true` was silently rejected while
+`publish_interval_secs` was 0. Set the interval first, then enable. A refused
+write is indistinguishable from an accepted one in the CLI's output.
+
+**A batched `--set` can silently drop one module's entire write.** Eight fields
+in one invocation: all eight printed `Set …`, the run printed `Writing
+neighbor_info configuration to device`, it exited 0, and the three
+`neighbor_info` fields read back unchanged. Set module config one field at a
+time.
+
+### What to do instead
+
+Read the **whole module block** out of `--info`, not the field you set:
+
+```bash
+meshtastic --port <dev> --info > /tmp/i
+grep -A16 '"telemetry"' /tmp/i | grep -viE 'psk|password|privateKey'
+```
+
+That is what exposed `deviceTelemetryEnabled`. Then confirm the packet actually
+went on air, from the database or the broker. **A value that reads back proves
+the field was stored and nothing more.**

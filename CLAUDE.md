@@ -151,8 +151,9 @@ credentials in `etc/secrets/azmsh-mqtt.conf`. Two things are easy to get wrong:
 
 **FTG1 is not isolated.** 185 peers in the ledger as of 2026-09-25, 101 with
 positions, 21 within 15 mi, typical SNR −5 to −6 dB. Real RF peers exist to test
-against, so link behaviour never had to wait on SJC. The peer table, traceroutes
-and terrain arithmetic are in `docs/meshtastic-rf-survey.md`.
+against, so link behaviour never had to wait on SJC. The peer table, the
+ledger's mechanics and the terrain arithmetic are in
+[`docs/meshtastic-rf-survey.md`](docs/meshtastic-rf-survey.md).
 
 Three conclusions generalise:
 
@@ -166,45 +167,14 @@ Three conclusions generalise:
   looks like a failure.
 
 **Do not commit other operators' positions.** Node IDs are already public;
-coordinates are someone else's location.
+coordinates are someone else's location. `peers-report.sh` refuses to run unless
+`docs/peers.local.*` is gitignored, and **the NodeDB ages entries out, so a scan
+is not a record** — the script accumulates into a ledger and merges it each run.
+There is **one** ledger, here, not one per host as this file once claimed.
 
-### Silence is not evidence here — the mesh is slow
-
-Measured 2026-09-25: **one packet every ~140 s** reaches the broker (0.0077/s,
-~668/day). A 60-second watch seeing nothing is the *expected* result; even 450
-seconds of silence is only ~4% surprising.
-
-**A subscription that matches nothing, a quiet mesh, and a sampler killed before
-it flushed all produce the same empty output.** Never conclude anything from a
-silent sample. What works is a comparison that can fail: run the old and new
-filter against the broker **at the same time** and compare counts — the
-prove-the-detector-can-fire rule applied to a subscription. Narrowing meshview
-from `msh/#` to `msh/US/2/e/#` was confirmed that way, both returning the same 4
-messages over 300 s.
-
-### Peer positions are not committed
-
-`docs/peers.local.md` is excluded by `docs/*.local.*`. **The NodeDB ages entries
-out, so a scan is not a record** — `peers-report.sh` accumulates everything ever
-seen into `docs/peers.local.json` and merges it back each run. It refuses to run
-unless both are gitignored. **185 entries on 2026-09-25** (160 then in the
-NodeDB, 25 retained), 101 positioned, 21 within 15 mi.
-
-**This file used to say there were two ledgers, one per host, with pi4's
-authoritative because the radio is there. Both halves were wrong.** There is no
-ledger on pi4 and never was a durable one — `~ftg` has none at any depth and no
-checkout for the script to write into, so the 155-entry figure came from a run
-pointed at a file since gone. The reasoning is void too: the radio is on WiFi,
-so **any host on the LAN can produce the ledger** with
-`peers-report.sh --host 10.0.0.117`, and which USB socket it occupies decides
-nothing. There is one ledger, here.
-
-Its main consumer is `~/deployments/prod/bin/seed-meshview-from-peers.py` on
-pi4, which fills meshview's node table from it because meshview learns a name
-only from NodeInfo. **Seeded rows carry the ledger's timestamps, not `now()`**,
-so a node last heard weeks ago stays outside a narrow map window rather than
-pretending to be current — seeding can grow the database and leave the map
-unchanged.
+**The mesh is slow: one packet every ~140 s.** A 60-second watch seeing nothing
+is the *expected* result, so **never conclude anything from a silent sample** —
+use a comparison that can fail, running old and new filters at the same time.
 
 **Local secrets live in `etc/secrets/`**, ignored as a whole directory. Device
 config exports carry channel PSKs, the WiFi PSK and `security.privateKey`.
@@ -375,29 +345,16 @@ position with `--setlat/--setlon/--setalt` makes the radio transmit one
 immediately, which is the way to test a position change without waiting out
 `position_broadcast_secs`.
 
-**A batched `--set` can silently drop one module's entire write.** On 2026-09-26
-eight fields were set in one invocation; all eight printed `Set …`, the run
-printed `Writing neighbor_info configuration to device`, it exited 0, and the
-three `neighbor_info` fields read back unchanged. Setting them individually
-worked immediately. So the failure is **per module inside the transaction**, not
-per field: write module config one field at a time and read each one back.
-
-**A feature usually has a separate enable from its interval, and setting the
-interval alone does nothing.** Three instances on 2026-09-26/27, all of which
-read back correctly and none of which transmitted:
-
-- `telemetry.device_update_interval 3600` with `device_telemetry_enabled`
-  **false** — no telemetry for 69 minutes. The flag is the switch.
-- `mqtt.map_report_settings.should_report_location` **false** — map reports
-  would have carried no position at all.
-- `mqtt.map_reporting_enabled true` was silently *refused* while
-  `publish_interval_secs` was 0; set the interval first, then enable.
-
-So **reading a value back is not proof a feature works** — it proves only that
-the field was stored. Confirm the packet on the air, from the database or
-broker.
-Read the whole module block from `--info` rather than the one field you set:
-`grep -A16 '"telemetry"'` is what exposed `deviceTelemetryEnabled`.
+**Reading a value back is not proof a feature works** — it proves only that the
+field was stored. Three writes on 2026-09-26/27 read back correctly and
+transmitted nothing: an interval set while its separate enable stayed false
+(`telemetry.device_telemetry_enabled`), a map report with
+`should_report_location` false, and a batched `--set` that silently dropped one
+whole module's write while printing success for all eight fields. **Write module
+config one field at a time, read the whole module block out of `--info` rather
+than the field you set, and confirm the packet on the air.** Detail and the
+commands in
+[`docs/meshtastic-gateway-setup.md`](docs/meshtastic-gateway-setup.md).
 
 **The radio's TCP API has few client slots, and exhausting them looks like a
 dead radio.** After many CLI sessions in quick succession, every call failed
@@ -559,64 +516,45 @@ reset, not a fault.
 
 ## Toolchain layout
 
-Three environments with distinct jobs: the project virtualenv holding the
-Meshtastic CLI and esptool, PlatformIO's own data directory, and `pio` on PATH
-outside both so every embedded project shares one install. **Code that checks
-for the build toolchain must look for `pio` on PATH, not inside the venv.**
-`resolve_venv_bin()` accepts four layouts, so **pyenv is this machine's choice
-and not a project requirement** — do not reintroduce a hard-coded
-`~/.pyenv/versions/...` path. Details in README, "Three environments".
+Three environments, described in README, "Three environments". Two rules:
+**code that checks for the build toolchain must look for `pio` on PATH, not
+inside the venv**, and `resolve_venv_bin()` accepts four layouts, so **pyenv is
+this machine's choice and not a project requirement** — never reintroduce a
+hard-coded `~/.pyenv/versions/...` path.
 
 ## Shell script conventions
 
 All scripts must pass `shellcheck -x` with no output. Run it before finishing.
+Full list, and the false-zero traps in detail, in
+[`docs/shell-conventions.md`](docs/shell-conventions.md). Two bite before you
+write a line:
 
 - **Never `... | grep -q` under `set -o pipefail`.** `grep -q` exits at the first
   match, the upstream command dies of SIGPIPE, and the pipeline returns 141
-  despite the match succeeding. This has already caused two real bugs here. Read
-  into a variable and use a herestring.
-- **`mosquitto_sub` block-buffers when its stdout is a pipe.** Under `timeout`
-  it is killed before the buffer flushes, so it prints **nothing at all** — no
-  partial line, no error — and that is indistinguishable from a subscription
-  that matched nothing. Two samples were lost to this on 2026-09-25. **This file
-  used to say to redirect to a file and read it afterwards. That does not work**
-  — a file is not a tty either, so the stream is still block-buffered and
-  SIGTERM discards the buffer; a third sample was lost that way on 2026-09-26.
-  Use `stdbuf -oL`, and prefer the producer's own clean-exit timeout where it
-  has one (`mosquitto_sub -W <secs>`). The same applies to any long-running
-  producer sampled under `timeout`.
-- **A zero from a line-based check usually means the check is broken.** Four
-  variants cost real time on 2026-09-25, each looking like an absent finding:
-  `cmd | sed` under `||` reports *sed's* exit status, so the fallback never
-  fires; `\|` inside `grep -E` matches a literal pipe rather than alternation;
-  a phrase wrapped across two lines is invisible to line-based `grep`, so
-  **flatten whitespace before matching prose**; and `awk 'length>80'` counts
-  *bytes* here, so em-dashes and `−` give false over-length reports. This is the
-  global prove-the-detector rule in its commonest local form: **match something
-  known present before trusting a zero.**
+  despite the match succeeding. This has caused two real bugs here. Read into a
+  variable and use a herestring.
 - **Watch for functions shadowing commands.** A status helper named `head()` once
   shadowed `/usr/bin/head` in the same script. shellcheck does not catch this.
-- Every subcommand is **idempotent** — re-running changes nothing already in the
-  desired state, and the udev rule is rewritten only when its content differs.
-- `heltec-setup.sh` escalates **per command** through a `SUDO` array rather than
-  re-execing under sudo, so `check` never prompts for a password.
-- `heltec-dev.sh` **refuses to run as root** — PlatformIO as root leaves
-  root-owned files in `~/.platformio` and `.pio` that break the next build.
-- Shell startup files cannot be relied on for pyenv: `runuser -l` and `su -` give
-  a *non-interactive* login shell, and Ubuntu's `~/.bashrc` returns on its first
-  line for those, so `pyenv init` never runs. Resolve interpreters directly.
+
+And two rules that decide whether a check means anything:
+
+- **A zero from a line-based check usually means the check is broken** — a
+  pipeline's status comes from its *last* command, `\|` in `grep -E` is a
+  literal pipe, wrapped prose is invisible to line-based `grep`, and `awk`
+  counts bytes. **Match something known present before trusting a zero.**
+- **`mosquitto_sub` block-buffers whenever stdout is not a tty**, so under
+  `timeout` it prints nothing at all. Redirecting to a file does **not** fix it.
+  Use `stdbuf -oL` or the producer's own clean-exit timeout.
 
 ## The second radio lives in its own project
 
-A **SparkFun LoRa Gateway 1-Channel (ESP32)** turned up on `/dev/ttyUSB1` and is
-documented in `../../Sparkfun/ESP32-LoRa-1Ch-Gateway`, not here.
-
-**None of the hardware facts above apply to it.** It is an ESP32-D0WDQ6 with an
-RFM95W — an SX1276 — behind a CH340C. No 1.8 V TCXO, no DIO2 RF switch, and its
-interrupt genuinely is DIO0. Its radio sits at NSS 16 / RST 5 / DIO0 26, which
-matches no stock Meshtastic or RNode target, so it cannot join a link test
-without custom firmware. It is relevant to #14 because it already is a working
-LoRaWAN gateway.
+A **SparkFun LoRa Gateway 1-Channel (ESP32)** is documented in
+`../../Sparkfun/ESP32-LoRa-1Ch-Gateway`, not here. **None of the hardware facts
+above apply to it** — ESP32-D0WDQ6, RFM95W (an SX1276) behind a CH340C, no 1.8 V
+TCXO, no DIO2 RF switch, and its interrupt genuinely is DIO0. Its pinout matches
+no stock Meshtastic or RNode target, so it cannot join a link test without
+custom firmware. Relevant to #14 because it is already a working LoRaWAN
+gateway.
 
 ## Issue tracker and board
 
@@ -628,16 +566,12 @@ Mesh**, project **#10**, owned by the **user** `JeffreyPeacock` — GraphQL uses
 **Priority is a board field here, not a label.** Do not create `priority:pN`
 labels.
 
-**Everything here goes out as `JeffreyPeacock`** — the repo, the board, and any
-cross-component ticket filed on this project's behalf. Two accounts are logged
-into `gh` on this machine because the owner runs several projects at once, and
-`WhiteFeatherAI` has **`pull` only** on this repo. The failure is misleading:
-creating an issue still succeeds, and the block appears later as
-`WhiteFeatherAI does not have the correct permissions to execute CloseIssue`,
-which reads like a token-scope problem rather than the wrong account. Wrap `gh`
-in `scripts/as-owner.sh`, which switches, runs and switches back. git needs no
-wrapper: `user.name` and `user.email` are pinned in this repository's own config,
-so a global change made for another project cannot reach it.
+**Everything here goes out as `JeffreyPeacock`** — repo, board, and any
+cross-component ticket. Two accounts are logged into `gh`; `WhiteFeatherAI` has
+**`pull` only** here, and the failure is misleading because creating an issue
+still succeeds while closing it fails with what looks like a token-scope error.
+Wrap `gh` in `scripts/as-owner.sh`. git needs no wrapper — `user.name` and
+`user.email` are pinned in this repo's own config.
 
 | Thing | ID |
 |---|---|
@@ -657,14 +591,12 @@ The board holds 17 items, so one `gh project item-list` is complete and cheap.
 Still filter server-side where the option exists.
 
 **A per-issue `issue.projectItems` query is safe here but not everywhere.** It
-returns `totalCount 1` for all 17 issues on board #10, so `/fix-ticket` Step 0 is
-sound. It returns a **silent `totalCount 0` for items that demonstrably exist**
-when the project owner and the repo owner are different accounts — seen on
-`White-Feather-AI/WFAI-Ops`, board owned by the user `WhiteFeatherAI`. I read that
-zero as "not on a board" and was wrong in two closing comments. The discriminator
-is **owner mismatch**, not user-owned projects: board #10 is user-owned and
-works. Where the owners differ, read the board once with `gh project item-list`
-and join locally.
+works for every issue on board #10, so `/fix-ticket` Step 0 is sound. But it
+returns a **silent `totalCount 0` for items that demonstrably exist when the
+project owner and the repo owner differ** — that zero was read as "not on a
+board" and was wrong in two closing comments. The discriminator is **owner
+mismatch**, not user-owned projects. Where owners differ, read the board once
+with `gh project item-list` and join locally.
 
 ## Branches and verification
 
@@ -706,20 +638,17 @@ IDs, gates and hardware realities of this repo.
 
 ## Session transcripts carry secrets
 
-`scripts/export-transcript.sh` renders a session log as text and masks secrets
-while doing it. Masking is on by default and the script refuses to write to any
-path inside the repository that is not gitignored.
-
-This is not hypothetical. One session captured a WiFi PSK — the Meshtastic CLI
-**echoes the value it sets**, so "run it yourself so it stays out of the
-transcript" does not work — and a channel URL, which encodes **every channel's
-PSK**.
+`scripts/export-transcript.sh` masks secrets as it renders. Masking is on by
+default and it refuses to write to any path in the repo that is not gitignored.
+**It only knows the patterns it was given**, and real leaks keep arriving in
+shapes no pattern covered: a WiFi PSK, a channel URL encoding every channel's
+PSK, `"psk"` and `"password"` in `--info` JSON, and a password pasted as prose.
+When one gets through, add the pattern — the script re-runs them against its own
+output, so check and fix cannot drift apart.
 
 Project-specific literals go in `.claude_artifacts/mask-secrets.txt`, one per
-line. Prefer that to `--secret`, whose argument lands in shell history and then
-in the *next* transcript. The script verifies its own output by re-running the
-patterns against the finished file, so check and fix cannot drift apart — but it
-only knows the patterns it was given.
+line. Prefer that to `--secret`, whose argument lands in shell history and so in
+the *next* transcript.
 
 ## Commits
 

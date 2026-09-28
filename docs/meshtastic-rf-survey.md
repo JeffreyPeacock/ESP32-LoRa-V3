@@ -85,3 +85,43 @@ capture when recency matters.
 A 13-hour capture on 2026-08-18/19 logged **1,576 packets and zero text
 messages** — telemetry, position and nodeinfo only. Worth knowing before
 investing further in the Meshtastic messaging path.
+
+## The peer ledger, and why a scan is not a record
+
+`peers-report.sh` writes `docs/peers.local.md` and `docs/peers.local.json`,
+both excluded by `docs/*.local.*`. It refuses to run unless both are
+gitignored, because **coordinates are someone else's location** even though
+node IDs are public.
+
+**The NodeDB ages entries out, so a single scan is not a record.** The script
+accumulates everything ever seen into the JSON and merges it back each run.
+185 entries as of 2026-09-25: 160 then in the NodeDB plus 25 retained from
+earlier scans, 101 positioned, 21 within 15 mi.
+
+**There is one ledger, on the workstation.** An earlier note claimed two, one
+per host, with pi4's authoritative "because the radio is there". Both halves
+were wrong. `~ftg` has no ledger at any depth and no checkout for the script
+to write into, so the 155-entry figure came from a run pointed at a file since
+gone. The reasoning was void as well: the radio is on WiFi, so **any host on
+the LAN can produce the ledger** with `peers-report.sh --host <radio>`, and
+which USB socket it occupies decides nothing.
+
+Its main consumer is `~/deployments/prod/bin/seed-meshview-from-peers.py` on
+pi4, which fills meshview's node table from the ledger because meshview learns
+a name only from a NodeInfo packet. **Seeded rows carry the ledger's
+timestamps, not `now()`**, so a node last heard weeks ago stays outside a
+narrow map window instead of pretending to be current. Seeding can therefore
+grow the database and leave the map showing no more nodes, or fewer.
+
+## Silence is not evidence here — the mesh is slow
+
+Measured 2026-09-25: **one packet every ~140 s** reaches the broker
+(0.0077/s, about 668/day). A 60-second watch seeing nothing is the *expected*
+result, and even 450 seconds of silence is only about 4% surprising.
+
+**A subscription that matches nothing, a quiet mesh, and a sampler killed
+before it flushed all produce the same empty output.** What works is a
+comparison that can fail: run the old and the new filter against the broker
+**at the same time** and compare counts. Narrowing meshview from `msh/#` to
+`msh/US/2/e/#` was confirmed that way, both returning the same 4 messages over
+300 s.
