@@ -94,15 +94,28 @@ after the reboot. The old filter can be dropped once nothing wants it.
 `mqtt.azmsh.net` resolves and **1883 is open while 8883 is not**, so it is plain
 MQTT with no TLS, matching their instructions.
 
-The credentials authenticate. The handshake gives `CONNACK (0)` and the
-subscription is granted, not refused. But **zero messages are delivered to that
-account**, across 80 seconds of sampling — consistent with a published
-uplink-only account whose reads are filtered by ACL.
+The credentials **authenticate and may publish**, both proven: `CONNACK (0)`,
+and a QoS 1 MQTT 5 publish returns `PUBACK RC:0`, which is the broker saying it
+accepted the message.
+
+**Reads are blocked, and a granted SUBACK does not tell you otherwise.** This
+file first recorded that the subscription was "granted, not refused", implying
+we could read. That was wrong: mosquitto acknowledges a subscription and then
+filters delivery per message, so a successful SUBACK — even for `#` — is
+compatible with receiving nothing. Subscribing to everything on their broker is
+acknowledged and returns zero messages.
+
+**The test that settles it is to publish and subscribe with the same account.**
+Our own accepted publish never came back, which proves the filtering rather
+than inferring it from silence. This is the prove-the-detector rule applied to
+an MQTT account: never conclude anything about a broker's contents from a
+credential you have not shown can read.
 
 **So our own feed cannot be confirmed from this account.** Confirmation has to
 come from their own tools — <https://view.azmsh.net/>,
-<https://map.azmsh.net/>, <https://metrics.azmsh.net/> — or from a community
-member. Do not read the silence as a fault.
+<https://map.azmsh.net/>, <https://metrics.azmsh.net/> — all behind Keycloak
+SSO, including `/firehose` — or from a community member. Do not read silence as
+a fault.
 
 ## Monitoring the uplink
 

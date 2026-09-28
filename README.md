@@ -422,10 +422,10 @@ lost board, and the new MAC has to be read off the new one.
 | Channels 1, 2 uplink | off |
 | Position | fixed, a public landmark, **`position_precision: 32`** (was 13) |
 | Intervals | `nodeInfoBroadcastSecs` **43200**, `positionBroadcastSecs` **43200**, smart broadcast off — Arizona stationary profile, 2026-09-26 |
-| Telemetry | device metrics **every 3600 s** (was disabled); neighbour info on, 39600 s, over LoRa |
-| Map report | **on**, 21600 s, position precision 32 |
+| Telemetry | device metrics **every 3600 s** — needs `device_telemetry_enabled` **and** the interval; the flag was off until 2026-09-27 and nothing was sent. Neighbour info on, 39600 s, over LoRa |
+| Map report | **on**, 21600 s, precision 32, `should_report_location` **true** — that flag was false until 2026-09-27, so reports would have carried no position |
 | OK to MQTT | **true** — lets other gateways uplink our packets, as the community asks |
-| Community | feeds the Arizona Meshtastic broker via an outbound-only mosquitto bridge — [docs/arizona-mesh-community.md](docs/arizona-mesh-community.md) |
+| Community | feeds the Arizona Meshtastic broker through an outbound-only mosquitto bridge on pi4, live since 2026-09-26 22:52, checked every 15 min by a systemd user timer — [docs/arizona-mesh-community.md](docs/arizona-mesh-community.md) |
 | Power | USB from pi4 **plus a 3000 mAh pack** (2026-09-26) — carries ~20–26 h if USB or pi4 power is lost |
 | Serial path | `…platform-fd500000.pcie…usb-0:1.3:1.0-port0` on pi4 |
 | udev rule | installed on pi4 2026-09-25, `99-heltec-cp210x.rules`; survives reboot |
